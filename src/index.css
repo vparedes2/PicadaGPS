@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+/* Paleta de campo: alto contraste para leer al sol; tema oscuro para la noche */
+:root {
+  --fondo: #f4f1ea;
+  --panel: #ffffff;
+  --texto: #1c1a17;
+  --tenue: #5f5a52;
+  --linea: #d9d3c7;
+  --acento: #1f6f4a;
+  --acento-texto: #ffffff;
+  --alerta: #b3261e;
+  --pozo: #c2410c;
+  --instalacion: #1d4ed8;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="claro"]) {
+    --fondo: #141311;
+    --panel: #1e1c19;
+    --texto: #f2efe8;
+    --tenue: #a8a196;
+    --linea: #39352f;
+    --acento: #3fae79;
+    --acento-texto: #0d1410;
+    --alerta: #f2867d;
+    --pozo: #fb923c;
+    --instalacion: #7aa2ff;
+    color-scheme: dark;
+  }
+}
+@theme {
+  --color-fondo: var(--fondo);
+  --color-panel: var(--panel);
+  --color-texto: var(--texto);
+  --color-tenue: var(--tenue);
+  --color-linea: var(--linea);
+  --color-acento: var(--acento);
+  --color-acento-texto: var(--acento-texto);
+  --color-alerta: var(--alerta);
+  --color-pozo: var(--pozo);
+  --color-instalacion: var(--instalacion);
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+html, body, #root { height: 100%; margin: 0; }
+body { background: var(--fondo); color: var(--texto); font-family: var(--font-sans); -webkit-tap-highlight-color: transparent; }
+button { cursor: pointer; }
+.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.maplibregl-ctrl-attrib { font-size: 10px; }
