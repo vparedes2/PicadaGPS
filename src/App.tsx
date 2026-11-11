@@ -5,6 +5,7 @@ import Ficha from "./components/Ficha";
 import { useDatos, esPozo, nombreDe, type Datos, type Pozo, type Instalacion } from "./lib/datos";
 import { buscarPorPartes } from "./lib/buscar";
 import { rutaMasCercana } from "./lib/geo";
+import type { Linea } from "./components/Mapa";
 import { useLista } from "./lib/guardado";
 
 function useEnLinea() {
@@ -91,6 +92,9 @@ export default function App() {
 
   const x = sel && datos ? datos.porClave.get(sel) ?? null : null;
   const salida = useMemo(() => (x && datos ? rutaMasCercana(x.lat, x.lon, datos.rutas) : null), [x, datos]);
+  // Referencia dibujada en el mapa: por defecto la salida de la ruta; cambia al tocar otra en la ficha
+  const [linea, setLinea] = useState<Linea | null>(null);
+  useEffect(() => { setLinea(salida ? { desde: { lat: salida.lat, lon: salida.lon }, tipo: "ruta", n: 0 } : null); }, [salida]);
 
   const elegir = (k: string, volar = true) => {
     if (!datos) return;
@@ -142,7 +146,8 @@ export default function App() {
             ) : x ? (
               <Ficha x={x} datos={datos} favorito={favs.lista.includes(x.k)} onFavorito={() => favs.alternar(x.k)} onCerrar={() => setSel(null)}
                 onElegir={(k) => elegir(k)} onVer={(lat, lon, zoom) => setCentrar({ lat, lon, zoom, n: Date.now() })}
-                yo={yo} onUbicarme={() => ubicarme()} ubicando={ubicando} />
+                yo={yo} onUbicarme={() => ubicarme()} ubicando={ubicando}
+                linea={linea} onLinea={(desde, tipo) => setLinea({ desde, tipo, n: Date.now() })} />
             ) : <Inicio datos={datos} favoritos={favs.lista} recientes={recs.lista} onElegir={(k) => elegir(k)} onSacarFav={favs.sacar} />}
           {avisoGps && <p className="text-[13px] text-alerta mt-2">{avisoGps}</p>}
         </div>
@@ -150,7 +155,7 @@ export default function App() {
 
       <main className="order-1 md:order-2 relative flex-1 min-h-0">
         {datos && (
-          <Mapa datos={datos} seleccion={x ? { lat: x.lat, lon: x.lon } : null} salida={salida ? { lat: salida.lat, lon: salida.lon } : null}
+          <Mapa datos={datos} seleccion={x ? { lat: x.lat, lon: x.lon } : null} linea={linea}
             yo={yo} satelite={satelite} onElegir={(k) => elegir(k, false)} centrarEn={centrar} />
         )}
         <div className="absolute left-3 top-3 flex flex-col gap-2 z-10">

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { Copy, Check, Star, Share2, Navigation, MapPin, Crosshair, Download, X, Route, Factory, Layers } from "lucide-react";
+import { Copy, Check, Star, Share2, Navigation, MapPin, Crosshair, Download, X, Route, Factory, Layers, Waypoints, FileText } from "lucide-react";
+import type { Linea, Marca } from "./Mapa";
 import { esPozo, nombreDe, type Datos, type Instalacion, type Pozo } from "../lib/datos";
 import { aDMS, cardinal, distM, rumbo, rutaMasCercana, textoDist } from "../lib/geo";
 import { copiar, enlaceGoogle, enlaceOtraApp, enlaceWaze, enlaceWhatsApp, guardarZona, nombreOtraApp } from "../lib/navegar";
@@ -15,6 +16,8 @@ interface Props {
   yo: { lat: number; lon: number; precision: number } | null;
   onUbicarme: () => void;
   ubicando: boolean;
+  linea: Linea | null;
+  onLinea: (desde: Marca, tipo: Linea["tipo"]) => void;
 }
 
 function BotonCopiar({ texto, etiqueta }: { texto: string; etiqueta: string }) {
@@ -31,6 +34,22 @@ function BotonCopiar({ texto, etiqueta }: { texto: string; etiqueta: string }) {
   );
 }
 
+function Referencia({ activa, onClick, icono, texto, detalle, extra }: { activa: boolean; onClick: () => void; icono: React.ReactNode; texto: React.ReactNode; detalle: string; extra?: React.ReactNode }) {
+  return (
+    <li className={`flex items-start gap-2 p-3 ${activa ? "bg-fondo" : ""}`}>
+      <button onClick={onClick} aria-pressed={activa} className="flex-1 min-w-0 text-left flex items-start gap-2">
+        {icono}
+        <span className="text-[15px] leading-snug">
+          {texto}
+          <span className="block text-[12px] text-tenue">{detalle}</span>
+          {activa && <span className="block text-[12px] text-acento font-medium mt-0.5">Línea punteada en el mapa</span>}
+        </span>
+      </button>
+      {extra}
+    </li>
+  );
+}
+
 const Nav = ({ href, children, principal }: { href: string; children: React.ReactNode; principal?: boolean }) => (
   <a href={href} target="_blank" rel="noopener"
     className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-3 rounded-lg text-[15px] font-semibold ${principal ? "bg-acento text-acento-texto" : "border border-linea bg-panel"}`}>
@@ -38,7 +57,7 @@ const Nav = ({ href, children, principal }: { href: string; children: React.Reac
   </a>
 );
 
-export default function Ficha({ x, datos, favorito, onFavorito, onCerrar, onElegir, onVer, yo, onUbicarme, ubicando }: Props) {
+export default function Ficha({ x, datos, favorito, onFavorito, onCerrar, onElegir, onVer, yo, onUbicarme, ubicando, linea, onLinea }: Props) {
   const nombre = nombreDe(x);
   const { lat, lon } = x;
   const [guardando, setGuardando] = useState<string | null>(null);
@@ -54,9 +73,13 @@ export default function Ficha({ x, datos, favorito, onFavorito, onCerrar, onEleg
       ? datos.pozos.filter((p) => p.k !== x.k && Math.abs(p.lat - lat) < 0.001 && Math.abs(p.lon - lon) < 0.0013 && distM(p.lat, p.lon, lat, lon) < 80)
       : [];
     const ruta = rutaMasCercana(lat, lon, datos.rutas);
-    return { inst, vecinos, ruta };
+    // Camino de yacimiento más cercano (OpenStreetMap), solo si está a menos de 5 km
+    const camino0 = rutaMasCercana(lat, lon, datos.caminos, 0.05);
+    const camino = camino0 && camino0.d < 5000 ? camino0 : null;
+    return { inst, vecinos, ruta, camino };
   }, [x, datos, lat, lon]);
 
+  const activa = (p: { lat: number; lon: number }) => !!linea && Math.abs(linea.desde.lat - p.lat) < 1e-7 && Math.abs(linea.desde.lon - p.lon) < 1e-7;
   const desdeYo = yo ? { d: distM(yo.lat, yo.lon, lat, lon), r: rumbo(yo.lat, yo.lon, lat, lon) } : null;
   const dec = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
   const dms = `${aDMS(lat, true)}, ${aDMS(lon, false)}`;
@@ -108,35 +131,31 @@ export default function Ficha({ x, datos, favorito, onFavorito, onCerrar, onEleg
 
       <section aria-label="Cómo llegar" className="flex flex-col gap-2">
         <h3 className="text-[13px] uppercase tracking-wide text-tenue font-semibold">Cómo llegar</h3>
-        {ref.ruta ? (
-          <div className="rounded-lg border border-linea bg-panel p-3">
-            <p className="flex items-start gap-2 text-[15px]"><Route className="w-5 h-5 shrink-0 mt-0.5 text-[#b88a00]" />
-              <span>La ruta más cercana es <b>{ref.ruta.nombre}</b>. Desde el punto más cercano de la ruta, el {esPozo(x) ? "pozo" : "lugar"} queda a <b>{textoDist(ref.ruta.d)}</b> al {cardinal(rumbo(ref.ruta.lat, ref.ruta.lon, lat, lon))}.</span>
-            </p>
-            <p className="num text-[12px] text-tenue mt-1.5">Punto de salida: {ref.ruta.lat.toFixed(5)}, {ref.ruta.lon.toFixed(5)}</p>
-            <div className="flex gap-2 mt-2">
-              <a href={enlaceWaze(ref.ruta.lat, ref.ruta.lon)} target="_blank" rel="noopener" className="flex-1 text-center text-[14px] py-2 rounded-md border border-linea">Ir a la salida (Waze)</a>
-              <button onClick={() => onVer(ref.ruta!.lat, ref.ruta!.lon, 13)} className="flex-1 text-[14px] py-2 rounded-md border border-linea">Ver en el mapa</button>
-            </div>
-          </div>
-        ) : (
-          <p className="text-[14px] text-tenue">Las rutas todavía no están cargadas en esta versión de los datos.</p>
-        )}
-        {ref.inst.length > 0 && (
-          <ul className="rounded-lg border border-linea bg-panel divide-y divide-linea">
-            {ref.inst.map(({ i, d }) => (
-              <li key={i.k}>
-                <button onClick={() => onElegir(i.k)} className="w-full text-left flex items-start gap-2 p-3">
-                  <Factory className="w-5 h-5 shrink-0 mt-0.5 text-instalacion" />
-                  <span className="text-[15px] leading-snug">
-                    A <b>{textoDist(d)}</b> al {cardinal(rumbo(i.lat, i.lon, lat, lon))} de <b>{i.nombre}</b>
-                    <span className="block text-[12px] text-tenue">{i.tipo}{i.operador ? ` · ${i.operador}` : ""}</span>
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
+        <p className="text-[12px] text-tenue -mb-1">Tocá una referencia para ver en el mapa la línea punteada hasta el {esPozo(x) ? "pozo" : "lugar"}.</p>
+        <ul className="rounded-lg border border-linea bg-panel divide-y divide-linea">
+          {ref.ruta && (
+            <Referencia activa={activa(ref.ruta)} onClick={() => onLinea({ lat: ref.ruta!.lat, lon: ref.ruta!.lon }, "ruta")}
+              icono={<Route className="w-5 h-5 shrink-0 mt-0.5 text-[#b88a00]" />}
+              texto={<>A <b>{textoDist(ref.ruta.d)}</b> al {cardinal(rumbo(ref.ruta.lat, ref.ruta.lon, lat, lon))} de <b>{ref.ruta.nombre}</b></>}
+              detalle={`Punto de salida: ${ref.ruta.lat.toFixed(5)}, ${ref.ruta.lon.toFixed(5)}`}
+              extra={<a href={enlaceWaze(ref.ruta.lat, ref.ruta.lon)} target="_blank" rel="noopener" className="text-[12px] px-2 py-1 rounded border border-linea whitespace-nowrap">Waze a la salida</a>} />
+          )}
+          {ref.camino && (
+            <Referencia activa={activa(ref.camino)} onClick={() => onLinea({ lat: ref.camino!.lat, lon: ref.camino!.lon }, "camino")}
+              icono={<Waypoints className="w-5 h-5 shrink-0 mt-0.5 text-[#7a4b00]" />}
+              texto={<>A <b>{textoDist(ref.camino.d)}</b> al {cardinal(rumbo(ref.camino.lat, ref.camino.lon, lat, lon))} del camino de yacimiento más cercano{ref.camino.nombre && !/^(Camino|Huella|Camino de servicio|Camino de yacimiento)$/.test(ref.camino.nombre) ? <> (<b>{ref.camino.nombre}</b>)</> : ""}</>}
+              detalle={`Punto del camino: ${ref.camino.lat.toFixed(5)}, ${ref.camino.lon.toFixed(5)} · OpenStreetMap`}
+              extra={<a href={enlaceWaze(ref.camino.lat, ref.camino.lon)} target="_blank" rel="noopener" className="text-[12px] px-2 py-1 rounded border border-linea whitespace-nowrap">Waze al camino</a>} />
+          )}
+          {ref.inst.map(({ i, d }) => (
+            <Referencia key={i.k} activa={activa(i)} onClick={() => onLinea({ lat: i.lat, lon: i.lon }, "instalacion")}
+              icono={<Factory className="w-5 h-5 shrink-0 mt-0.5 text-instalacion" />}
+              texto={<>A <b>{textoDist(d)}</b> al {cardinal(rumbo(i.lat, i.lon, lat, lon))} de <b>{i.nombre}</b></>}
+              detalle={`${i.tipo}${i.operador ? ` · ${i.operador}` : ""}`}
+              extra={<button onClick={(e) => { e.stopPropagation(); onElegir(i.k); }} aria-label={`Abrir la ficha de ${i.nombre}`} className="text-[12px] px-2 py-1 rounded border border-linea flex items-center gap-1"><FileText className="w-3.5 h-3.5" /> Ficha</button>} />
+          ))}
+        </ul>
+        {!ref.ruta && <p className="text-[14px] text-tenue">Las rutas todavía no están cargadas en esta versión de los datos.</p>}
         {ref.vecinos.length > 0 && (
           <div className="rounded-lg border border-linea bg-panel p-3">
             <p className="flex items-center gap-2 text-[14px] font-medium"><Layers className="w-4 h-4" /> En la misma locación: {ref.vecinos.length} pozo{ref.vecinos.length > 1 ? "s" : ""} más</p>

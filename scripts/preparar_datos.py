@@ -5,6 +5,7 @@ Prepara los datos que la app guarda en el celular (public/datos/).
   instalaciones.json  baterías, plantas y compresoras (SIG Hidrocarburos de Neuquén)
   areas.geojson       límites de las áreas de concesión (SIG Hidrocarburos de Neuquén)
   rutas.geojson       rutas nacionales y provinciales (IGN; si no responde, OpenStreetMap)
+  caminos.geojson     caminos de yacimiento y huellas principales (OpenStreetMap, cargados por voluntarios)
   meta.json           fechas de cada fuente
 
 Cada fuente remota se guarda en data/fuente/ como respaldo: si una descarga falla,
@@ -212,6 +213,63 @@ out geom tags;"""
     return {"type": "FeatureCollection", "features": feats, "fuente": "OpenStreetMap (Overpass)"}
 
 
+# Zona petrolera de Neuquén (de El Trapial y Rincón de los Sauces hasta el sur de Añelo)
+ZONA_CAMINOS = (-70.4, -39.3, -67.8, -36.9)
+
+
+def caminos_osm():
+    """Caminos de yacimiento: en OpenStreetMap figuran como 'unclassified', 'track' o 'service'.
+    Se dejan afuera las huellas de peor categoría (grade4/grade5), estacionamientos y accesos a casas."""
+    w, s_, e, n = ZONA_CAMINOS
+    q = f"""[out:json][timeout:300];
+(
+  way["highway"="unclassified"]({s_},{w},{n},{e});
+  way["highway"="track"]["tracktype"!~"grade4|grade5"]({s_},{w},{n},{e});
+  way["highway"="service"]["service"!~"driveway|parking_aisle|drive-through"]({s_},{w},{n},{e});
+);
+out geom tags;"""
+    d = json.loads(descargar("https://overpass-api.de/api/interpreter", 360, urllib.parse.urlencode({"data": q}).encode()))
+    feats = []
+    for w_ in d.get("elements", []):
+        t = w_.get("tags", {})
+        coords = [[g["lon"], g["lat"]] for g in w_.get("geometry", [])]
+        if len(coords) < 2:
+            continue
+        nombre = t.get("name") or t.get("ref") or ""
+        tipo = {"unclassified": "Camino", "track": "Huella", "service": "Camino de servicio"}.get(t.get("highway"), "Camino")
+        feats.append({"type": "Feature", "properties": {"nombre": nombre, "tipo": tipo, "superficie": t.get("surface", "")},
+                      "geometry": {"type": "LineString", "coordinates": coords}})
+    if len(feats) < 50:
+        raise RuntimeError("OpenStreetMap devolvió pocos caminos")
+    return {"type": "FeatureCollection", "features": feats, "fuente": "OpenStreetMap (Overpass)"}
+
+
+def preparar_caminos(fc):
+    feats = []
+    for f in (fc or {}).get("features", []):
+        for l in lineas(f.get("geometry")):
+            s2 = simplificar(l, 15)
+            # Tramos muy cortos (menos de ~150 m) no sirven como referencia
+            if len(s2) >= 2 and sum(math.hypot((a[0] - b[0]) * 87000, (a[1] - b[1]) * 111000) for a, b in zip(s2, s2[1:])) > 150:
+                p = f["properties"]
+                feats.append({"type": "Feature", "properties": {"nombre": p.get("nombre", ""), "tipo": p.get("tipo", "")},
+                              "geometry": {"type": "LineString", "coordinates": s2}})
+    return {"type": "FeatureCollection", "features": feats}
+
+
+def explorar_capas():
+    """Solo informa en el registro qué capas viales publican el IGN y la provincia, por si aparece una de caminos de yacimiento."""
+    import re
+    for nombre, url in [("IGN", f"{IGN}?service=WFS&version=1.1.0&request=GetCapabilities"),
+                        ("Neuquén", "https://hidrocarburos.energianeuquen.gob.ar/geoserver/ows?service=WFS&version=1.1.0&request=GetCapabilities")]:
+        try:
+            cap = descargar(url, 60).decode("utf-8", "ignore")
+            capas = sorted(set(re.findall(r"<Name>([^<]*(?:vial|camin|ruta|picad|acceso)[^<]*)</Name>", cap, re.I)))
+            print(f"  capas viales en {nombre}: {capas or 'ninguna'}")
+        except Exception as e:
+            print(f"  no se pudo leer el catálogo de {nombre}: {e}")
+
+
 def obtener_rutas():
     try:
         return rutas_ign()
@@ -267,6 +325,15 @@ def main():
         guardar("rutas.geojson", rutas)
         meta["fuentes"]["rutas"] = {"fecha": f_rutas, "cantidad": len(rutas["features"]), "origen": o_rutas, "fuente": fuente_rutas}
 
+    caminos, f_cam, o_cam = con_respaldo("caminos.json", caminos_osm)
+    if caminos:
+        fuente_cam = caminos.get("fuente", "")
+        caminos = preparar_caminos(caminos)
+        guardar("caminos.geojson", caminos)
+        meta["fuentes"]["caminos"] = {"fecha": f_cam, "cantidad": len(caminos["features"]), "origen": o_cam, "fuente": fuente_cam}
+
+    if not LOCAL:
+        explorar_capas()
     guardar("meta.json", meta)
     print(json.dumps(meta, ensure_ascii=False, indent=1))
 

@@ -11,8 +11,8 @@ export interface Instalacion { k: string; nombre: string; tipo: string; area: st
 export interface Meta { generado: string; fuentes: Record<string, { fecha: string | null; cantidad: number; fuente: string; origen?: string }> }
 
 export interface Datos {
-  pozos: Pozo[]; instalaciones: Instalacion[]; rutas: Ruta[];
-  areas: GeoJSON.FeatureCollection | null; rutasGeo: GeoJSON.FeatureCollection | null; meta: Meta | null;
+  pozos: Pozo[]; instalaciones: Instalacion[]; rutas: Ruta[]; caminos: Ruta[];
+  areas: GeoJSON.FeatureCollection | null; rutasGeo: GeoJSON.FeatureCollection | null; caminosGeo: GeoJSON.FeatureCollection | null; meta: Meta | null;
   indice: Indexado[]; // pozos primero, instalaciones después (i >= pozos.length)
   porClave: Map<string, Pozo | Instalacion>;
 }
@@ -21,8 +21,9 @@ const ACTIVOS = /extracci|inyecci|perfor|termin|efectiv/i;
 const json = (u: string) => fetch(u).then((r) => (r.ok ? r.json() : null)).catch(() => null);
 
 async function cargar(): Promise<Datos> {
-  const [p, ins, areas, rutasGeo, meta] = await Promise.all([
-    json("/datos/pozos.json"), json("/datos/instalaciones.json"), json("/datos/areas.geojson"), json("/datos/rutas.geojson"), json("/datos/meta.json")
+  const [p, ins, areas, rutasGeo, caminosGeo, meta] = await Promise.all([
+    json("/datos/pozos.json"), json("/datos/instalaciones.json"), json("/datos/areas.geojson"), json("/datos/rutas.geojson"),
+    json("/datos/caminos.geojson"), json("/datos/meta.json")
   ]);
   if (!p) throw new Error("No se pudieron cargar los pozos. Conectate una vez para descargarlos.");
   const d = p.dic;
@@ -34,11 +35,13 @@ async function cargar(): Promise<Datos> {
   const instalaciones: Instalacion[] = (ins?.filas || []).map((f: any[], i: number) => ({
     k: `i${i}`, nombre: f[0], tipo: f[1], area: f[2], operador: f[3], lat: f[4], lon: f[5]
   }));
-  const rutas: Ruta[] = (rutasGeo?.features || []).map((f: any) => {
+  const aLineas = (fc: any, sinNombre: string): Ruta[] => (fc?.features || []).map((f: any) => {
     const c: number[][] = f.geometry.coordinates;
     const xs = c.map((x) => x[0]), ys = c.map((x) => x[1]);
-    return { nombre: f.properties.nombre, coords: c, caja: [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)] };
+    return { nombre: f.properties.nombre || f.properties.tipo || sinNombre, coords: c, caja: [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)] };
   });
+  const rutas = aLineas(rutasGeo, "Ruta");
+  const caminos = aLineas(caminosGeo, "Camino de yacimiento");
   const indice: Indexado[] = [
     ...pozos.map((x, i) => ({ i, codigo: compactar(x.sigla), texto: normalizar(`${x.area} ${x.yacimiento} ${x.empresa} ${x.tipo}`), tipo: x.tipo, activo: ACTIVOS.test(x.estado) })),
     ...instalaciones.map((x, j) => ({ i: pozos.length + j, codigo: compactar(x.nombre), texto: normalizar(`${x.tipo} ${x.area} ${x.operador}`), tipo: "Instalación", activo: true }))
@@ -46,7 +49,7 @@ async function cargar(): Promise<Datos> {
   const porClave = new Map<string, Pozo | Instalacion>();
   pozos.forEach((x) => porClave.set(x.k, x));
   instalaciones.forEach((x) => porClave.set(x.k, x));
-  return { pozos, instalaciones, rutas, areas, rutasGeo, meta, indice, porClave };
+  return { pozos, instalaciones, rutas, caminos, areas, rutasGeo, caminosGeo, meta, indice, porClave };
 }
 
 let promesa: Promise<Datos> | null = null;

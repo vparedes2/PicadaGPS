@@ -41,9 +41,9 @@ function proyectar(lat: number, lon: number, a: number[], b: number[]) {
 export interface Ruta { nombre: string; coords: number[][]; caja: [number, number, number, number] }
 
 /** La ruta más cercana y el punto de la ruta donde conviene salir hacia el pozo */
-export function rutaMasCercana(lat: number, lon: number, rutas: Ruta[]) {
+export function rutaMasCercana(lat: number, lon: number, rutas: Ruta[], margen = 0.6) {
+  // margen en grados: solo se revisan las líneas cuya caja queda a menos de esa distancia
   let mejor: { nombre: string; lat: number; lon: number; d: number } | null = null;
-  const margen = 0.6; // grados: ninguna ruta principal de Neuquén queda más lejos que esto
   for (const r of rutas) {
     const [w, s, e, n] = r.caja;
     if (lon < w - margen || lon > e + margen || lat < s - margen || lat > n + margen) continue;

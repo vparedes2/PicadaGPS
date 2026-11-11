@@ -4,10 +4,11 @@ import type { Datos } from "../lib/datos";
 import { TESELA } from "../lib/navegar";
 
 export interface Marca { lat: number; lon: number }
+export interface Linea { desde: Marca; tipo: "ruta" | "camino" | "instalacion"; n: number }
 interface Props {
   datos: Datos;
   seleccion: Marca | null;
-  salida: Marca | null;     // punto de la ruta más cercano al pozo
+  linea: Linea | null;      // referencia elegida en la ficha: línea punteada hasta el pozo
   yo: Marca | null;         // ubicación del teléfono
   satelite: boolean;
   onElegir: (clave: string) => void;
@@ -44,7 +45,9 @@ function etiqueta(texto: string, clase: "area" | "pozo" | "inst") {
 }
 const css = (v: string) => getComputedStyle(document.documentElement).getPropertyValue(v).trim() || "#888";
 
-export default function Mapa({ datos, seleccion, salida, yo, satelite, onElegir, centrarEn }: Props) {
+const COLOR_LINEA = { ruta: "#b3261e", camino: "#7a4b00", instalacion: "#1d4ed8" };
+
+export default function Mapa({ datos, seleccion, linea, yo, satelite, onElegir, centrarEn }: Props) {
   const div = useRef<HTMLDivElement>(null);
   const mapa = useRef<MLMap | null>(null);
   const listo = useRef(false);
@@ -64,6 +67,7 @@ export default function Mapa({ datos, seleccion, salida, yo, satelite, onElegir,
           sat: { type: "raster", tiles: [TESELA], tileSize: 256, maxzoom: 18, attribution: "Imágenes © Esri, Maxar, Earthstar Geographics" },
           areas: { type: "geojson", data: datos.areas ?? vacio },
           rutas: { type: "geojson", data: datos.rutasGeo ?? vacio },
+          caminos: { type: "geojson", data: datos.caminosGeo ?? vacio },
           pozos: {
             type: "geojson",
             data: { type: "FeatureCollection", features: datos.pozos.map((p) => ({ type: "Feature", properties: { k: p.k }, geometry: { type: "Point", coordinates: [p.lon, p.lat] } })) }
@@ -79,9 +83,19 @@ export default function Mapa({ datos, seleccion, salida, yo, satelite, onElegir,
           { id: "sat", type: "raster", source: "sat", layout: { visibility: "none" } },
           { id: "areas-relleno", type: "fill", source: "areas", paint: { "fill-color": "#1f6f4a", "fill-opacity": ["interpolate", ["linear"], ["zoom"], 7, 0.06, 13, 0.02] } },
           { id: "areas-borde", type: "line", source: "areas", paint: { "line-color": "#1f6f4a", "line-width": 1, "line-opacity": 0.6 } },
+          {
+            // Caminos de yacimiento (OpenStreetMap): se ven al acercarse
+            id: "caminos", type: "line", source: "caminos", minzoom: 10,
+            paint: { "line-color": "#fffaf0", "line-opacity": 0.95, "line-width": ["interpolate", ["linear"], ["zoom"], 10, 0.8, 15, 3] }
+          },
+          {
+            id: "caminos-borde", type: "line", source: "caminos", minzoom: 10,
+            paint: { "line-color": "#7a4b00", "line-opacity": 0.55, "line-width": ["interpolate", ["linear"], ["zoom"], 10, 0.4, 15, 1], "line-gap-width": ["interpolate", ["linear"], ["zoom"], 10, 0.8, 15, 3] }
+          },
           { id: "rutas-borde", type: "line", source: "rutas", paint: { "line-color": "#5b4a1e", "line-width": ["interpolate", ["linear"], ["zoom"], 7, 2.5, 14, 6] } },
           { id: "rutas", type: "line", source: "rutas", paint: { "line-color": "#f5c542", "line-width": ["interpolate", ["linear"], ["zoom"], 7, 1.2, 14, 4] } },
-          { id: "salida", type: "line", source: "salida", paint: { "line-color": "#b3261e", "line-width": 2.5, "line-dasharray": [2, 1.5] } },
+          { id: "salida", type: "line", source: "salida", paint: { "line-color": ["get", "color"], "line-width": 3, "line-dasharray": [2, 1.5] } },
+          { id: "salida-punto", type: "circle", source: "salida", filter: ["==", ["geometry-type"], "Point"], paint: { "circle-radius": 6, "circle-color": ["get", "color"], "circle-stroke-color": "#fff", "circle-stroke-width": 2 } },
           {
             id: "pozos", type: "circle", source: "pozos",
             paint: {
@@ -200,11 +214,23 @@ export default function Mapa({ datos, seleccion, salida, yo, satelite, onElegir,
       el.style.cssText = `width:22px;height:22px;border-radius:50%;border:4px solid ${css("--alerta")};background:rgba(255,255,255,.85);box-shadow:0 0 0 2px #fff,0 2px 8px rgba(0,0,0,.4)`;
       marcas.current.sel = new maplibregl.Marker({ element: el }).setLngLat([seleccion.lon, seleccion.lat]).addTo(m);
     }
-    const poner = () => (m.getSource("salida") as GeoJSONSource | undefined)?.setData(seleccion && salida
-      ? { type: "FeatureCollection", features: [{ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: [[seleccion.lon, seleccion.lat], [salida.lon, salida.lat]] } }] }
+    const color = linea ? COLOR_LINEA[linea.tipo] : "#b3261e";
+    const poner = () => (m.getSource("salida") as GeoJSONSource | undefined)?.setData(seleccion && linea
+      ? { type: "FeatureCollection", features: [
+          { type: "Feature", properties: { color }, geometry: { type: "LineString", coordinates: [[seleccion.lon, seleccion.lat], [linea.desde.lon, linea.desde.lat]] } },
+          { type: "Feature", properties: { color }, geometry: { type: "Point", coordinates: [linea.desde.lon, linea.desde.lat] } }
+        ] }
       : vacio);
     if (listo.current) poner(); else m.once("load", poner);
-  }, [seleccion, salida]);
+  }, [seleccion, linea]);
+
+  // Al tocar una referencia en la ficha, se encuadran la referencia y el pozo
+  useEffect(() => {
+    const m = mapa.current;
+    if (!m || !seleccion || !linea || linea.n === 0) return;
+    const b = new maplibregl.LngLatBounds([seleccion.lon, seleccion.lat], [seleccion.lon, seleccion.lat]).extend([linea.desde.lon, linea.desde.lat]);
+    m.fitBounds(b, { padding: 60, maxZoom: 15.5, duration: 900 });
+  }, [linea?.n]);
 
   // Ubicación del teléfono
   useEffect(() => {
