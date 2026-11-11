@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, Satellite, Map as MapaIcono, Star, Clock, WifiOff, Info, Factory, X, Crosshair, UserRound } from "lucide-react";
+import { Search, Satellite, Map as MapaIcono, Star, Clock, WifiOff, Info, Factory, X, Crosshair, UserRound, Layers } from "lucide-react";
 import Mapa from "./components/Mapa";
 import Ficha from "./components/Ficha";
 import { useDatos, esPozo, nombreDe, type Datos, type Pozo, type Instalacion } from "./lib/datos";
-import { buscarPorPartes } from "./lib/buscar";
+import { buscarPorPartes, buscarAreas } from "./lib/buscar";
 import { rutaMasCercana } from "./lib/geo";
 import type { Linea } from "./components/Mapa";
 import { useLista } from "./lib/guardado";
@@ -86,7 +86,7 @@ export default function App({ acceso }: { acceso: Acceso }) {
   const [q, setQ] = useState("");
   const [sel, setSel] = useState<string | null>(null);
   const [satelite, setSatelite] = useState(navigator.onLine);
-  const [centrar, setCentrar] = useState<{ lat: number; lon: number; zoom: number; n: number } | null>(null);
+  const [centrar, setCentrar] = useState<{ lat: number; lon: number; zoom: number; n: number; caja?: [number, number, number, number] } | null>(null);
   const [yo, setYo] = useState<{ lat: number; lon: number; precision: number } | null>(null);
   const [ubicando, setUbicando] = useState(false);
   const [avisoGps, setAvisoGps] = useState<string | null>(null);
@@ -97,6 +97,31 @@ export default function App({ acceso }: { acceso: Acceso }) {
     if (!datos || q.trim().length < 2) return [];
     return buscarPorPartes(datos.indice, q, 40).map((i) => (i < datos.pozos.length ? datos.pozos[i] : datos.instalaciones[i - datos.pozos.length]));
   }, [datos, q]);
+
+  // Áreas de concesión que coinciden con la búsqueda: llevan el mapa al área completa
+  const areasInfo = useMemo(() => {
+    const m = new Map<string, { caja: [number, number, number, number]; operador: string; pozos: number }>();
+    if (!datos?.areas) return m;
+    for (const f of datos.areas.features) {
+      const nombre = String((f.properties as any)?.nombre ?? ""); if (!nombre) continue;
+      const g: any = f.geometry; const anillos: number[][][] = g.type === "Polygon" ? g.coordinates : g.type === "MultiPolygon" ? g.coordinates.flat() : [];
+      let x0 = 180, y0 = 90, x1 = -180, y1 = -90;
+      for (const a of anillos) for (const [x, y] of a) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+      const previo = m.get(nombre);
+      if (previo) { const c = previo.caja; previo.caja = [Math.min(c[0], x0), Math.min(c[1], y0), Math.max(c[2], x1), Math.max(c[3], y1)]; continue; }
+      m.set(nombre, { caja: [x0, y0, x1, y1], operador: String((f.properties as any)?.operador ?? ""), pozos: 0 });
+    }
+    for (const p of datos.pozos) { const a = m.get(p.area); if (a) a.pozos++; }
+    return m;
+  }, [datos]);
+  const areasHalladas = useMemo(() => (q.trim().length >= 3 ? buscarAreas([...areasInfo.keys()], q) : []), [areasInfo, q]);
+  const irArea = (nombre: string) => {
+    const a = areasInfo.get(nombre); if (!a) return;
+    const [x0, y0, x1, y1] = a.caja;
+    const lado = Math.max(x1 - x0, (y1 - y0) * 1.3, 0.005);
+    setSel(null); setQ("");
+    setCentrar({ lat: (y0 + y1) / 2, lon: (x0 + x1) / 2, zoom: Math.min(14, Math.max(8, Math.log2(360 / lado) - 1.2)), n: Date.now(), caja: a.caja });
+  };
 
   const x = sel && datos ? datos.porClave.get(sel) ?? null : null;
   const salida = useMemo(() => (x && datos ? rutaMasCercana(x.lat, x.lon, datos.rutas) : null), [x, datos]);
@@ -153,8 +178,25 @@ export default function App({ acceso }: { acceso: Acceso }) {
         <div className="flex-1 overflow-y-auto p-3">
           {!datos ? <p className="text-[14px] text-tenue">Cargando los datos en el teléfono…</p>
             : q.trim().length >= 2 ? (
-              resultados.length ? (
-                <ul className="rounded-lg border border-linea bg-panel divide-y divide-linea">{resultados.map((r) => <Fila key={r.k} x={r} onClick={() => elegir(r.k)} />)}</ul>
+              resultados.length || areasHalladas.length ? (
+                <div className="flex flex-col gap-2">
+                  {areasHalladas.length > 0 && (
+                    <ul className="rounded-lg border border-linea bg-panel divide-y divide-linea">
+                      {areasHalladas.map((n) => (
+                        <li key={n}>
+                          <button onClick={() => irArea(n)} className="w-full text-left px-3 py-2.5 flex items-center gap-3">
+                            <Layers className="w-4 h-4 text-acento shrink-0" />
+                            <span className="min-w-0">
+                              <span className="block text-[15px] font-medium truncate">Área {n}</span>
+                              <span className="block text-[12px] text-tenue truncate">{areasInfo.get(n)?.pozos.toLocaleString("es-AR")} pozos · {areasInfo.get(n)?.operador} · ver en el mapa</span>
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {resultados.length > 0 && <ul className="rounded-lg border border-linea bg-panel divide-y divide-linea">{resultados.map((r) => <Fila key={r.k} x={r} onClick={() => elegir(r.k)} />)}</ul>}
+                </div>
               ) : <p className="text-[14px] text-tenue">Sin coincidencias. Probá con menos letras o con el área.</p>
             ) : x ? (
               <Ficha x={x} datos={datos} favorito={favs.lista.includes(x.k)} onFavorito={() => favs.alternar(x.k)} onCerrar={() => setSel(null)}

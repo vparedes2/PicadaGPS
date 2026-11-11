@@ -12,13 +12,14 @@ interface Props {
   yo: Marca | null;         // ubicación del teléfono
   satelite: boolean;
   onElegir: (clave: string) => void;
-  centrarEn: { lat: number; lon: number; zoom: number; n: number } | null;
+  centrarEn: { lat: number; lon: number; zoom: number; n: number; caja?: [number, number, number, number] } | null;
 }
 
 const vacio: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 
 /** "RINCON DEL MANGRULLO" → "Rincón del Mangrullo" (sin tildes, pero legible) */
-const titulo = (s: string) => s.toLowerCase().replace(/(^|\s)(\S)/g, (_, a, b) => a + b.toUpperCase()).replace(/ (De|Del|La|Las|Los|El|Y) /g, (m) => m.toLowerCase());
+const titulo = (s: string) => s.toLowerCase().replace(/(^|\s)(\S)/g, (_, a, b) => a + b.toUpperCase()).replace(/ (De|Del|La|Las|Los|El|Y) /g, (m) => m.toLowerCase())
+  .replace(/\b(Ii|Iii|Iv|Vi|Vii)\b/g, (m) => m.toUpperCase());
 /** "YPF.Nq.LACh-419(h)" → "LACh-419(h)": en el mapa sobra el prefijo de operadora y provincia */
 const siglaCorta = (s: string) => s.replace(/^[^.]+\.Nq\./, "");
 
@@ -245,7 +246,9 @@ export default function Mapa({ datos, seleccion, linea, yo, satelite, onElegir, 
   }, [yo]);
 
   useEffect(() => {
-    if (centrarEn) mapa.current?.flyTo({ center: [centrarEn.lon, centrarEn.lat], zoom: centrarEn.zoom, duration: 900 });
+    if (!centrarEn) return;
+    if (centrarEn.caja) mapa.current?.fitBounds([[centrarEn.caja[0], centrarEn.caja[1]], [centrarEn.caja[2], centrarEn.caja[3]]], { padding: 30, duration: 900, maxZoom: 14 });
+    else mapa.current?.flyTo({ center: [centrarEn.lon, centrarEn.lat], zoom: centrarEn.zoom, duration: 900 });
   }, [centrarEn]);
 
   // MapLibre pone position:relative en su contenedor: por eso va dentro de una caja absoluta
