@@ -104,7 +104,7 @@ export default function Acceso({ children }: { children: (a: TAcceso, recargar: 
   if (vista.tipo === "sin_acceso") {
     const a = vista.a;
     return (
-      <Marco pie={<button onClick={cerrarSesion} className="flex items-center gap-1 underline"><LogOut className="w-4 h-4" /> Salir ({a.email})</button>}>
+      <Marco pie={<button onClick={cerrarSesion} className="flex items-center gap-1 underline"><LogOut className="w-4 h-4" /> Cerrar sesión ({a.email})</button>}>
         {avisoUI}
         {a.estado === "bloqueado" ? (
           <p className="flex items-start gap-2 rounded-lg border border-linea bg-panel p-3 text-[14px]"><ShieldAlert className="w-5 h-5 shrink-0 text-alerta" />

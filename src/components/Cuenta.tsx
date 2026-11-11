@@ -63,7 +63,8 @@ export default function Cuenta({ a, onCerrar }: { a: Acceso; onCerrar: () => voi
             <button onClick={() => setAdmin(true)} className="flex items-center gap-2 py-2.5 px-3 rounded-lg border border-linea bg-panel font-semibold text-[15px]"><Shield className="w-4 h-4" /> Administración</button>
           )}
           <button onClick={() => setCreditos(true)} className="flex items-center gap-2 py-2.5 px-3 rounded-lg border border-linea bg-panel text-[15px]"><BookOpen className="w-4 h-4" /> Créditos</button>
-          <button onClick={cerrarSesion} className="flex items-center gap-2 py-2.5 px-3 rounded-lg border border-linea bg-panel text-[15px]"><LogOut className="w-4 h-4" /> Salir (borra los datos de este teléfono)</button>
+          <button onClick={cerrarSesion} className="flex items-center gap-2 py-2.5 px-3 rounded-lg border border-linea bg-panel text-[15px]"><LogOut className="w-4 h-4" /> Cerrar sesión</button>
+          <p className="text-[12px] text-tenue px-1">Al cerrar sesión se borran los pozos guardados en este teléfono, para que nadie los use sin cuenta. Se vuelven a bajar solos la próxima vez que entres (con señal).</p>
         </div>
       </div>
       {creditos && <Creditos onCerrar={() => setCreditos(false)} />}
