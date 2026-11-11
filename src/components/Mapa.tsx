@@ -15,6 +15,33 @@ interface Props {
 }
 
 const vacio: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
+
+/** "RINCON DEL MANGRULLO" → "Rincón del Mangrullo" (sin tildes, pero legible) */
+const titulo = (s: string) => s.toLowerCase().replace(/(^|\s)(\S)/g, (_, a, b) => a + b.toUpperCase()).replace(/ (De|Del|La|Las|Los|El|Y) /g, (m) => m.toLowerCase());
+/** "YPF.Nq.LACh-419(h)" → "LACh-419(h)": en el mapa sobra el prefijo de operadora y provincia */
+const siglaCorta = (s: string) => s.replace(/^[^.]+\.Nq\./, "");
+
+/** Centro aproximado del polígono más grande del área, para poner el nombre */
+function centroArea(g: GeoJSON.Geometry): [number, number] | null {
+  const polys = g.type === "Polygon" ? [g.coordinates] : g.type === "MultiPolygon" ? g.coordinates : [];
+  let mejor: number[][] | null = null, maxN = 0;
+  for (const p of polys) if (p[0].length > maxN) { maxN = p[0].length; mejor = p[0]; }
+  if (!mejor) return null;
+  const xs = mejor.map((c) => c[0]), ys = mejor.map((c) => c[1]);
+  return [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2];
+}
+
+/** Etiquetas como HTML: no dependen de fuentes descargadas, así se ven también sin señal */
+function etiqueta(texto: string, clase: "area" | "pozo" | "inst") {
+  const el = document.createElement("div");
+  el.textContent = texto;
+  const base = "pointer-events:none;white-space:nowrap;font-family:system-ui,sans-serif;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 2px #fff;";
+  el.style.cssText = base + (clase === "area"
+    ? "font-size:11px;font-weight:700;color:#174f35;text-align:center;max-width:140px;white-space:normal;line-height:1.15"
+    : clase === "inst" ? "font-size:11.5px;font-weight:600;color:#1d3f9e;transform:translate(10px,0)"
+    : "font-size:11px;font-weight:600;color:#7c2d12;transform:translate(9px,0)");
+  return el;
+}
 const css = (v: string) => getComputedStyle(document.documentElement).getPropertyValue(v).trim() || "#888";
 
 export default function Mapa({ datos, seleccion, salida, yo, satelite, onElegir, centrarEn }: Props) {
@@ -22,6 +49,7 @@ export default function Mapa({ datos, seleccion, salida, yo, satelite, onElegir,
   const mapa = useRef<MLMap | null>(null);
   const listo = useRef(false);
   const marcas = useRef<{ sel?: maplibregl.Marker; yo?: maplibregl.Marker }>({});
+  const textos = useRef<{ areas: maplibregl.Marker[]; puntos: maplibregl.Marker[] }>({ areas: [], puntos: [] });
   const elegir = useRef(onElegir);
   elegir.current = onElegir;
 
@@ -80,8 +108,78 @@ export default function Mapa({ datos, seleccion, salida, yo, satelite, onElegir,
       m.on("mouseenter", capa, () => { m.getCanvas().style.cursor = "pointer"; });
       m.on("mouseleave", capa, () => { m.getCanvas().style.cursor = ""; });
     }
+    // Nombres de las áreas (yacimientos), de la más grande a la más chica
+    const areas: { c: [number, number]; n: string; tam: number }[] = [];
+    for (const f of datos.areas?.features ?? []) {
+      const c = centroArea(f.geometry);
+      const n = (f.properties as any)?.nombre;
+      if (!c || !n) continue;
+      const anillo = f.geometry.type === "MultiPolygon" ? f.geometry.coordinates[0][0] : f.geometry.type === "Polygon" ? f.geometry.coordinates[0] : [];
+      const xs = anillo.map((q) => q[0]), ys = anillo.map((q) => q[1]);
+      areas.push({ c, n: titulo(n), tam: (Math.max(...xs) - Math.min(...xs)) * (Math.max(...ys) - Math.min(...ys)) });
+    }
+    areas.sort((a, b) => b.tam - a.tam);
+    const porClave = datos.porClave;
+    // Se dibujan solo las etiquetas que no se pisan con otra ya puesta (cajas en píxeles de pantalla)
+    const refrescar = () => {
+      for (const mk of [...textos.current.areas, ...textos.current.puntos]) mk.remove();
+      textos.current = { areas: [], puntos: [] };
+      if (!listo.current) return;
+      const z = m.getZoom(), W = m.getContainer().clientWidth, H = m.getContainer().clientHeight;
+      const cajas: number[][] = [];
+      const libre = (x: number, y: number, w: number, h: number) => {
+        if (x + w < 0 || y + h < 0 || x > W || y > H) return false;
+        for (const c of cajas) if (x < c[2] && x + w > c[0] && y < c[3] && y + h > c[1]) return false;
+        cajas.push([x - 4, y - 3, x + w + 4, y + h + 3]);
+        return true;
+      };
+      const ancho = (t: string, px: number) => t.length * px * 0.56;
+      // 1) Instalaciones y pozos (lo que se busca) tienen prioridad sobre el nombre del área
+      const capas = z >= 14.5 ? ["inst", "pozos"] : z >= 11.5 ? ["inst"] : [];
+      if (capas.length) {
+        const grupos: { x: number; y: number; nombres: string[]; esP: boolean; lng: number; lat: number }[] = [];
+        const vistos = new Set<string>();
+        for (const f of m.queryRenderedFeatures({ layers: capas })) {
+          const k = String(f.properties?.k ?? "");
+          if (!k || vistos.has(k)) continue;
+          vistos.add(k);
+          const x = porClave.get(k);
+          if (!x) continue;
+          const esP = "sigla" in x;
+          const pt = m.project([x.lon, x.lat]);
+          // Pozos de una misma locación (a menos de 16 px) van en una sola etiqueta
+          const g = esP ? grupos.find((q) => q.esP && Math.hypot(q.x - pt.x, q.y - pt.y) < 16) : undefined;
+          const nombre = esP ? siglaCorta((x as any).sigla) : (x as any).nombre;
+          if (g) g.nombres.push(nombre);
+          else grupos.push({ x: pt.x, y: pt.y, nombres: [nombre], esP, lng: x.lon, lat: x.lat });
+        }
+        grupos.sort((a, b) => Number(a.esP) - Number(b.esP));
+        for (const g of grupos.slice(0, 150)) {
+          const t = g.nombres.length > 1 ? `${g.nombres.sort()[0]} y ${g.nombres.length - 1} más` : g.nombres[0];
+          if (!libre(g.x + 9, g.y - 7, ancho(t, 11.5), 14)) continue;
+          textos.current.puntos.push(new maplibregl.Marker({ element: etiqueta(t, g.esP ? "pozo" : "inst"), anchor: "left" }).setLngLat([g.lng, g.lat]).addTo(m));
+          if (textos.current.puntos.length >= 70) break;
+        }
+      }
+      // 2) Nombres de áreas: hasta zoom 14, sin pisarse
+      if (z < 14) {
+        for (const a of areas) {
+          const pt = m.project(a.c);
+          const w = Math.min(140, ancho(a.n, 11)), h = a.n.length * 11 * 0.56 > 140 ? 28 : 14;
+          if (!libre(pt.x - w / 2, pt.y - h / 2, w, h)) continue;
+          textos.current.areas.push(new maplibregl.Marker({ element: etiqueta(a.n, "area"), anchor: "center" }).setLngLat(a.c).addTo(m));
+          if (textos.current.areas.length >= 60) break;
+        }
+      }
+    };
+    m.on("load", refrescar);
+    m.on("moveend", refrescar);
     mapa.current = m;
-    return () => { m.remove(); mapa.current = null; listo.current = false; };
+    return () => {
+      for (const mk of [...textos.current.areas, ...textos.current.puntos]) mk.remove();
+      textos.current = { areas: [], puntos: [] };
+      m.remove(); mapa.current = null; listo.current = false;
+    };
   }, [datos]);
 
   // Satélite encendido o apagado
