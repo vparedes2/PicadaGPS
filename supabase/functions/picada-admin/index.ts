@@ -4,7 +4,9 @@
 //   cuenta     {user_id, cambios}            → activo_hasta, prueba_hasta, bloqueado, nota, plan
 //   sumar_dias {user_id, dias, campo}        → suma días a la prueba o al plan
 //   pago_manual {user_id, meses, ars, usd, nota} → registra un pago por transferencia/efectivo y extiende el plan
-//   config     {dias_prueba, trimestral_usd, anual_usd, tipo_dolar}
+//   confirmar_pago {pago_id}                 → aprueba un pedido hecho por WhatsApp y extiende el plan
+//   rechazar_pago  {pago_id}
+//   config     {dias_prueba, trimestral_usd, anual_usd, tipo_dolar, whatsapp}
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
@@ -80,12 +82,34 @@ Deno.serve(async (req) => {
       return json({ cuenta: data });
     }
 
+    if (b.accion === "confirmar_pago") {
+      // Solo se aprueba si todavía no estaba aprobado: evita sumar dos veces por doble toque
+      const { data: p } = await db.from("picada_pagos").update({ estado: "aprobado", actualizado: new Date().toISOString() })
+        .eq("id", b.pago_id).neq("estado", "aprobado").select().maybeSingle();
+      if (!p) return json({ error: "Ese pedido ya estaba confirmado o no existe." }, 400);
+      const { data: c } = await db.from("picada_cuentas").select("activo_hasta,prueba_hasta").eq("user_id", p.user_id).single();
+      const base = new Date(Math.max(Date.now(), c?.activo_hasta ? Date.parse(c.activo_hasta) : 0, c?.prueba_hasta ? Date.parse(c.prueba_hasta) : 0));
+      base.setMonth(base.getMonth() + Number(p.meses));
+      const { data, error } = await db.from("picada_cuentas").update({ activo_hasta: base.toISOString(), plan: p.plan, bloqueado: false }).eq("user_id", p.user_id).select().single();
+      if (error) throw error;
+      return json({ cuenta: data, pago: p });
+    }
+
+    if (b.accion === "rechazar_pago") {
+      const { data: p, error } = await db.from("picada_pagos").update({ estado: "rechazado", actualizado: new Date().toISOString() })
+        .eq("id", b.pago_id).eq("estado", "solicitado").select().maybeSingle();
+      if (error) throw error;
+      if (!p) return json({ error: "Solo se pueden rechazar pedidos sin confirmar." }, 400);
+      return json({ pago: p });
+    }
+
     if (b.accion === "config") {
       const c: Record<string, unknown> = { actualizado: new Date().toISOString() };
       if (b.dias_prueba != null) { const d = Math.round(Number(b.dias_prueba)); if (d >= 0 && d <= 90) c.dias_prueba = d; }
       if (b.trimestral_usd != null && Number(b.trimestral_usd) > 0) c.trimestral_usd = Number(b.trimestral_usd);
       if (b.anual_usd != null && Number(b.anual_usd) > 0) c.anual_usd = Number(b.anual_usd);
       if (b.tipo_dolar && TIPOS_DOLAR.includes(b.tipo_dolar)) c.tipo_dolar = b.tipo_dolar;
+      if (b.whatsapp != null) { const w = String(b.whatsapp).replace(/\D/g, ""); if (w.length >= 10 && w.length <= 15) c.whatsapp = w; }
       const { data, error } = await db.from("picada_config").update(c).eq("id", 1).select().single();
       if (error) throw error;
       return json({ config: data });

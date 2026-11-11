@@ -69,10 +69,10 @@ async function funcion<T = any>(nombre: string, cuerpo: Record<string, unknown>)
 }
 
 export interface Plan { usd: number; meses: number; ars: number }
-export interface Precios { dolar: { tipo: string; venta: number; fecha: string; nombre: string }; dias_prueba: number; planes: { trimestral: Plan; anual: Plan } }
+export interface Precios { dolar: { tipo: string; venta: number; fecha: string; nombre: string }; dias_prueba: number; whatsapp: string; planes: { trimestral: Plan; anual: Plan } }
 export const consultarPrecios = () => funcion<Precios>("picada-pagos", { accion: "precios" });
-export const crearPago = (plan: "trimestral" | "anual") => funcion<{ url: string }>("picada-pagos", { accion: "crear", plan });
-export const verificarPago = (payment_id: string) => funcion<{ estado: string }>("picada-pagos", { accion: "verificar", payment_id });
+/** Registra el pedido del plan; el pago se hace por transferencia y lo confirma el administrador. */
+export const solicitarPlan = (plan: "trimestral" | "anual") => funcion<{ pago: { id: string; ars: number; usd: number }; whatsapp: string }>("picada-pagos", { accion: "solicitar", plan });
 export const misPagos = () => funcion<{ pagos: any[] }>("picada-pagos", { accion: "mis_pagos" });
 export const admin = <T = any>(accion: string, datos: Record<string, unknown> = {}) => funcion<T>("picada-admin", { accion, ...datos });
 

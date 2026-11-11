@@ -112,3 +112,7 @@ end;
 $$;
 revoke all on function public.picada_acceso() from public, anon;
 grant execute on function public.picada_acceso() to authenticated;
+
+-- Cobro manual: el usuario pide el alias por WhatsApp y el administrador confirma el pago.
+alter table public.picada_config add column whatsapp text not null default '5492994603071';
+alter table public.picada_pagos alter column medio set default 'whatsapp';

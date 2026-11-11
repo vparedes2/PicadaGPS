@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { LogOut, ShieldAlert, WifiOff } from "lucide-react";
 import {
-  supabase, consultarAcceso, accesoGuardado, accesoSinSenal, ingresarConGoogle, salir, verificarPago, diaLargo, type Acceso as TAcceso
+  supabase, consultarAcceso, accesoGuardado, accesoSinSenal, ingresarConGoogle, salir, diaLargo, type Acceso as TAcceso
 } from "../lib/cuenta";
 import { reiniciarDatos } from "../lib/datos";
 import Planes from "./Planes";
@@ -37,6 +37,7 @@ function Marco({ children, pie }: { children: ReactNode; pie?: ReactNode }) {
 export default function Acceso({ children }: { children: (a: TAcceso, recargar: () => void) => ReactNode }) {
   const [vista, setVista] = useState<Vista>({ tipo: "cargando" });
   const [aviso, setAviso] = useState<string | null>(null);
+  const [revisando, setRevisando] = useState(false);
 
   const revisar = useCallback(async () => {
     const { data } = await supabase.auth.getSession();
@@ -59,25 +60,7 @@ export default function Acceso({ children }: { children: (a: TAcceso, recargar: 
   }, []);
 
   useEffect(() => {
-    // Vuelta desde Mercado Pago: ?pago=ok&payment_id=…
-    const q = new URLSearchParams(location.search);
-    const pago = q.get("pago");
-    const id = q.get("payment_id") || q.get("collection_id");
-    const limpiar = () => history.replaceState(null, "", location.pathname);
-    (async () => {
-      if (pago) {
-        limpiar();
-        if (pago === "ok" && id) {
-          setAviso("Confirmando el pago…");
-          try {
-            const r = await verificarPago(id);
-            setAviso(r.estado === "aprobado" ? "¡Pago acreditado! Ya tenés el plan activo." : "El pago quedó pendiente. Se habilita apenas Mercado Pago lo acredite.");
-          } catch { setAviso("No se pudo confirmar el pago todavía. Si lo hiciste, se habilita en unos minutos."); }
-        } else if (pago === "pendiente") setAviso("El pago quedó pendiente. Se habilita apenas Mercado Pago lo acredite.");
-        else setAviso("El pago no se completó. Podés intentarlo de nuevo.");
-      }
-      await revisar();
-    })();
+    revisar();
     const { data: sub } = supabase.auth.onAuthStateChange((ev) => { if (ev === "SIGNED_IN" || ev === "SIGNED_OUT") revisar(); });
     const enLinea = () => revisar();
     addEventListener("online", enLinea);
@@ -132,7 +115,8 @@ export default function Acceso({ children }: { children: (a: TAcceso, recargar: 
               <p className="font-semibold">{a.activo_hasta ? `Tu plan venció el ${diaLargo(a.activo_hasta)}.` : `Terminó tu prueba gratis (${diaLargo(a.prueba_hasta)}).`}</p>
               <p className="text-tenue">Elegí un plan para seguir usando PicadaGPS.</p>
             </div>
-            <Planes />
+            <Planes email={a.email} onRevisar={async () => { setRevisando(true); await revisar(); setRevisando(false); if (!accesoGuardado()?.acceso) setAviso("Todavía no figura el pago confirmado. Si ya transferiste, esperá la confirmación por WhatsApp."); }} />
+            {revisando && <p className="text-center text-[13px] text-tenue">Revisando…</p>}
           </>
         )}
       </Marco>

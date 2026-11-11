@@ -8,7 +8,7 @@ interface CuentaAdm {
   activo_hasta: string | null; plan: string | null; bloqueado: boolean; nota: string | null; ultimo_ingreso: string | null;
 }
 interface Pago { id: string; user_id: string; plan: string; meses: number; usd: number; ars: number; cotizacion: number; tipo_dolar: string; medio: string; estado: string; creado: string; mp_payment_id: string | null }
-interface Config { dias_prueba: number; trimestral_usd: number; anual_usd: number; tipo_dolar: string }
+interface Config { dias_prueba: number; trimestral_usd: number; anual_usd: number; tipo_dolar: string; whatsapp: string }
 
 const ahora = () => Date.now();
 const estadoDe = (c: CuentaAdm) =>
@@ -22,7 +22,7 @@ const Boton = ({ children, onClick, peligro }: { children: React.ReactNode; onCl
   <button onClick={onClick} className={`px-2.5 py-1.5 rounded-md border text-[13px] ${peligro ? "border-alerta text-alerta" : "border-linea bg-fondo"}`}>{children}</button>
 );
 
-function FilaUsuario({ c, pagos, onCambio }: { c: CuentaAdm; pagos: Pago[]; onCambio: (c: CuentaAdm) => void }) {
+function FilaUsuario({ c, pagos, onCambio, onPago }: { c: CuentaAdm; pagos: Pago[]; onCambio: (c: CuentaAdm) => void; onPago: (p: Pago) => void }) {
   const [abierta, setAbierta] = useState(false);
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +31,11 @@ function FilaUsuario({ c, pagos, onCambio }: { c: CuentaAdm; pagos: Pago[]; onCa
   const e = estadoDe(c);
   const hacer = async (accion: string, datos: Record<string, unknown>) => {
     setOcupado(true); setError(null);
-    try { const r = await admin<{ cuenta: CuentaAdm }>(accion, { user_id: c.user_id, ...datos }); onCambio(r.cuenta); setFecha((r.cuenta.activo_hasta ?? "").slice(0, 10)); }
+    try {
+      const r = await admin<{ cuenta?: CuentaAdm; pago?: Pago }>(accion, { user_id: c.user_id, ...datos });
+      if (r.cuenta) { onCambio(r.cuenta); setFecha((r.cuenta.activo_hasta ?? "").slice(0, 10)); }
+      if (r.pago) onPago(r.pago);
+    }
     catch (x) { setError((x as Error).message); }
     setOcupado(false);
   };
@@ -41,6 +45,7 @@ function FilaUsuario({ c, pagos, onCambio }: { c: CuentaAdm; pagos: Pago[]; onCa
     hacer("pago_manual", { meses, ars: Number(ars.replace(/\./g, "").replace(",", ".")) || 0, nota: "manual" });
   };
   const suyos = pagos.filter((p) => p.user_id === c.user_id);
+  const pendiente = suyos.find((p) => p.estado === "solicitado");
 
   return (
     <li className="text-[14px]">
@@ -52,11 +57,19 @@ function FilaUsuario({ c, pagos, onCambio }: { c: CuentaAdm; pagos: Pago[]; onCa
         <span className="text-right shrink-0">
           <span className={`block text-[13px] font-semibold ${COLOR[e]}`}>{e}</span>
           <span className="block text-[12px] text-tenue num">{e === "prueba" ? corta(c.prueba_hasta) : corta(c.activo_hasta)}</span>
+          {pendiente && <span className="block text-[11px] font-semibold text-pozo">pidió plan</span>}
         </span>
       </button>
       {abierta && (
         <div className={`px-3 pb-3 flex flex-col gap-2 ${ocupado ? "opacity-60 pointer-events-none" : ""}`}>
           <p className="text-[12px] text-tenue">Prueba hasta {corta(c.prueba_hasta)} · plan {c.plan ?? "—"} hasta {corta(c.activo_hasta)}</p>
+          {pendiente && (
+            <div className="rounded-md border border-pozo p-2 flex flex-wrap items-center gap-2 text-[13px]">
+              <span className="flex-1 min-w-[180px]">Pidió el plan <b>{pendiente.plan}</b> el {corta(pendiente.creado)}: {pesos(Number(pendiente.ars))} (US$ {pendiente.usd})</span>
+              <Boton onClick={() => confirm(`¿Confirmás que recibiste ${pesos(Number(pendiente.ars))} de ${c.email}?`) && hacer("confirmar_pago", { pago_id: pendiente.id })}>Confirmar pago</Boton>
+              <Boton peligro onClick={() => hacer("rechazar_pago", { pago_id: pendiente.id })}>Rechazar</Boton>
+            </div>
+          )}
           {c.rol !== "admin" && (
             <>
               <div className="flex flex-wrap gap-1.5">
@@ -114,6 +127,11 @@ function Precios({ config, onGuardado }: { config: Config; onGuardado: (c: Confi
           {Object.entries(NOMBRE_DOLAR).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
       </label>
+      <label className="flex items-center justify-between gap-3 text-[14px]">WhatsApp para pedir el alias
+        <input value={c.whatsapp} onChange={(e) => setC({ ...c, whatsapp: e.target.value })} inputMode="tel" placeholder="5492994603071"
+          className="w-40 px-2 py-1.5 rounded-md border border-linea bg-fondo text-right num" />
+      </label>
+      <p className="text-[12px] text-tenue">El WhatsApp va con código de país y sin el 15: 549 + característica + número.</p>
       <p className="text-[12px] text-tenue">Los cambios valen para pagos y cuentas nuevas. La prueba de los usuarios que ya entraron no cambia.</p>
       <button onClick={guardar} className="py-2.5 rounded-lg bg-acento text-acento-texto font-semibold">Guardar precios</button>
       {msj && <p className="text-[13px]">{msj}</p>}
@@ -139,6 +157,7 @@ export default function Admin({ onCerrar }: { onCerrar: () => void }) {
     return {
       n, total: d.cuentas.length,
       cobrado: aprobados.reduce((s, p) => s + Number(p.ars), 0),
+      pedidos: d.pagos.filter((p) => p.estado === "solicitado").length,
       cobradoMes: aprobados.filter((p) => Date.parse(p.creado) >= +mes).reduce((s, p) => s + Number(p.ars), 0)
     };
   }, [d]);
@@ -151,6 +170,15 @@ export default function Admin({ onCerrar }: { onCerrar: () => void }) {
 
   const email = (id: string) => d?.cuentas.find((c) => c.user_id === id)?.email ?? id.slice(0, 8);
   const cambio = (nueva: CuentaAdm) => setD((x) => x && { ...x, cuentas: x.cuentas.map((c) => (c.user_id === nueva.user_id ? nueva : c)) });
+  const cambioPago = (p: Pago) => setD((x) => x && { ...x, pagos: x.pagos.map((y) => (y.id === p.id ? p : y)) });
+  const [ocupado, setOcupado] = useState<string | null>(null);
+  const accionPago = async (accion: "confirmar_pago" | "rechazar_pago", p: Pago) => {
+    if (accion === "confirmar_pago" && !confirm(`¿Confirmás que recibiste ${pesos(Number(p.ars))} de ${email(p.user_id)}?`)) return;
+    setOcupado(p.id);
+    try { const r = await admin<{ cuenta?: CuentaAdm; pago: Pago }>(accion, { pago_id: p.id }); cambioPago(r.pago); if (r.cuenta) cambio(r.cuenta); }
+    catch (e) { alert((e as Error).message); }
+    setOcupado(null);
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-fondo overflow-y-auto">
@@ -167,7 +195,7 @@ export default function Admin({ onCerrar }: { onCerrar: () => void }) {
         {d && resumen && (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {[["Usuarios", resumen.total.toLocaleString("es-AR")], ["En prueba", resumen.n.prueba], ["Con plan", resumen.n.activo], ["Vencidos", resumen.n.vencido],
+              {[["Pedidos por confirmar", resumen.pedidos], ["Usuarios", resumen.total.toLocaleString("es-AR")], ["En prueba", resumen.n.prueba], ["Con plan", resumen.n.activo], ["Vencidos", resumen.n.vencido],
                 ["Cobrado este mes", pesos(resumen.cobradoMes)], ["Cobrado total", pesos(resumen.cobrado)], ["Bloqueados", resumen.n.bloqueado]].map(([k, v]) => (
                 <div key={k as string} className="rounded-lg border border-linea bg-panel p-2.5">
                   <span className="block text-[12px] text-tenue">{k}</span><span className="block num text-[18px] font-semibold">{v}</span>
@@ -191,7 +219,7 @@ export default function Admin({ onCerrar }: { onCerrar: () => void }) {
                   </select>
                 </div>
                 <ul className="rounded-lg border border-linea bg-panel divide-y divide-linea">
-                  {lista.map((c) => <FilaUsuario key={c.user_id} c={c} pagos={d.pagos} onCambio={cambio} />)}
+                  {lista.map((c) => <FilaUsuario key={c.user_id} c={c} pagos={d.pagos} onCambio={cambio} onPago={cambioPago} />)}
                   {!lista.length && <li className="p-3 text-[14px] text-tenue">Sin usuarios con ese filtro.</li>}
                 </ul>
               </>
@@ -206,7 +234,16 @@ export default function Admin({ onCerrar }: { onCerrar: () => void }) {
                         <td className="p-2 whitespace-nowrap">{corta(p.creado)}</td><td className="p-2">{email(p.user_id)}</td><td className="p-2">{p.plan}</td>
                         <td className="p-2 num">{p.usd}</td><td className="p-2 num whitespace-nowrap">{pesos(Number(p.ars))}</td>
                         <td className="p-2 num whitespace-nowrap">{p.cotizacion ? `${p.tipo_dolar} ${pesos(Number(p.cotizacion))}` : "—"}</td>
-                        <td className="p-2">{p.medio}</td><td className={`p-2 ${p.estado === "aprobado" ? "text-acento font-semibold" : ""}`}>{p.estado}</td>
+                        <td className="p-2">{p.medio}</td>
+                        <td className={`p-2 ${p.estado === "aprobado" ? "text-acento font-semibold" : p.estado === "solicitado" ? "text-pozo font-semibold" : ""}`}>
+                          {p.estado}
+                          {p.estado === "solicitado" && (
+                            <span className={`flex gap-1 mt-1 ${ocupado === p.id ? "opacity-50 pointer-events-none" : ""}`}>
+                              <Boton onClick={() => accionPago("confirmar_pago", p)}>Confirmar</Boton>
+                              <Boton peligro onClick={() => accionPago("rechazar_pago", p)}>Rechazar</Boton>
+                            </span>
+                          )}
+                        </td>
                       </tr>
                     ))}
                     {!d.pagos.length && <tr><td colSpan={8} className="p-3 text-tenue">Todavía no hay pagos.</td></tr>}

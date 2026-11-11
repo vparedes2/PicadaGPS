@@ -40,7 +40,7 @@ export default function Cuenta({ a, onCerrar }: { a: Acceso; onCerrar: () => voi
         {a.estado !== "admin" && (
           <section>
             <h2 className="text-[13px] uppercase tracking-wide text-tenue font-semibold mb-1.5">{a.estado === "prueba" ? "Elegí un plan" : "Renovar"}</h2>
-            {navigator.onLine ? <Planes /> : <p className="text-[14px] text-tenue">Necesitás señal para pagar.</p>}
+            {navigator.onLine ? <Planes email={a.email} /> : <p className="text-[14px] text-tenue">Necesitás señal para pagar.</p>}
           </section>
         )}
 

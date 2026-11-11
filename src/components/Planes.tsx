@@ -1,18 +1,30 @@
-/** Planes con precio en dólares y su equivalente en pesos al dólar del día; el pago sigue en Mercado Pago. */
+/**
+ * Planes con precio en dólares y su equivalente en pesos al dólar del día.
+ * El pago es por transferencia: el usuario pide el alias por WhatsApp y el administrador confirma el pago.
+ */
 import { useEffect, useState } from "react";
-import { consultarPrecios, crearPago, pesos, NOMBRE_DOLAR, type Precios } from "../lib/cuenta";
+import { MessageCircle } from "lucide-react";
+import { consultarPrecios, solicitarPlan, pesos, NOMBRE_DOLAR, type Precios } from "../lib/cuenta";
 
-export default function Planes() {
+export default function Planes({ email, onRevisar }: { email?: string; onRevisar?: () => void }) {
   const [p, setP] = useState<Precios | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [yendo, setYendo] = useState<string | null>(null);
+  const [pedido, setPedido] = useState<string | null>(null);
 
   useEffect(() => { consultarPrecios().then(setP).catch((e) => setError(e.message)); }, []);
 
-  const pagar = async (plan: "trimestral" | "anual") => {
+  const pedir = async (plan: "trimestral" | "anual") => {
+    if (!p) return;
     setYendo(plan); setError(null);
-    try { const r = await crearPago(plan); location.href = r.url; }
-    catch (e) { setError((e as Error).message); setYendo(null); }
+    try {
+      const r = await solicitarPlan(plan);
+      const nombre = plan === "anual" ? "anual (12 meses)" : "trimestral (3 meses)";
+      const texto = `Hola Víctor, quiero el plan ${nombre} de PicadaGPS: US$ ${r.pago.usd} = ${pesos(Number(r.pago.ars))} al dólar ${NOMBRE_DOLAR[p.dolar.tipo] ?? p.dolar.tipo} de hoy. Mi cuenta: ${email ?? ""}. ¿Me pasás el alias para transferir?`;
+      setPedido(plan);
+      location.href = `https://wa.me/${r.whatsapp}?text=${encodeURIComponent(texto)}`;
+    } catch (e) { setError((e as Error).message); }
+    setYendo(null);
   };
 
   if (error && !p) return <p className="text-[14px] text-alerta">{error}</p>;
@@ -29,9 +41,9 @@ export default function Planes() {
         </div>
         <span className="num text-[22px] font-bold">{pesos(pl.ars)}</span>
         <span className="text-[12px] text-tenue">{detalle}</span>
-        <button onClick={() => pagar(id)} disabled={!!yendo}
-          className="mt-1 py-2.5 rounded-lg bg-acento text-acento-texto font-semibold text-[15px] disabled:opacity-60">
-          {yendo === id ? "Abriendo Mercado Pago…" : "Pagar con Mercado Pago"}
+        <button onClick={() => pedir(id)} disabled={!!yendo}
+          className="mt-1 py-2.5 rounded-lg bg-acento text-acento-texto font-semibold text-[15px] disabled:opacity-60 flex items-center justify-center gap-2">
+          <MessageCircle className="w-4 h-4" /> {yendo === id ? "Abriendo WhatsApp…" : "Pedir alias por WhatsApp"}
         </button>
       </div>
     );
@@ -39,7 +51,14 @@ export default function Planes() {
 
   return (
     <div className="flex flex-col gap-2">
-      {tarjeta("trimestral", "Trimestral · 3 meses", "Un solo pago, sin renovación automática.")}
+      {pedido && (
+        <div className="rounded-lg border border-acento bg-panel p-3 text-[14px]">
+          <p className="font-semibold">Pedido registrado.</p>
+          <p className="text-tenue">Transferí al alias que te pasen por WhatsApp y mandá el comprobante. Cuando se confirme el pago, se habilita tu plan.</p>
+          {onRevisar && <button onClick={onRevisar} className="mt-2 py-2 px-3 rounded-lg border border-linea font-semibold">Ya me confirmaron: revisar</button>}
+        </div>
+      )}
+      {tarjeta("trimestral", "Trimestral · 3 meses", "Un solo pago por transferencia, sin renovación automática.")}
       {tarjeta("anual", "Anual · 12 meses", `Equivale a US$ ${mensualAnual.toFixed(2).replace(".", ",")} por mes. Un solo pago.`)}
       <p className="text-[12px] text-tenue">
         Pesos calculados con el dólar {NOMBRE_DOLAR[p.dolar.tipo] ?? p.dolar.tipo} de hoy: {pesos(p.dolar.venta)}
