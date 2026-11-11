@@ -60,8 +60,21 @@ export function accesoSinSenal(a: Acceso | null): boolean {
 export const diasSinSenalRestantes = (a: Acceso | null) =>
   a?.revisado ? Math.max(0, Math.ceil((Date.parse(a.revisado) + DIAS_SIN_SENAL * 86400000 - Date.now()) / 86400000)) : 0;
 
+/** Corta una espera: con señal débil una consulta puede quedar colgada sin error. */
+export function conTiempo<T>(p: PromiseLike<T>, ms: number, msj = "La conexión está muy lenta."): Promise<T> {
+  return new Promise<T>((ok, mal) => {
+    const t = setTimeout(() => mal(new Error(msj)), ms);
+    Promise.resolve(p).then((v) => { clearTimeout(t); ok(v); }, (e) => { clearTimeout(t); mal(e); });
+  });
+}
+
+/** ¿Hay una sesión guardada en este teléfono? (sin red: no intenta renovarla) */
+export function haySesionGuardada(): boolean {
+  try { return !!localStorage.getItem("picadagps.sesion"); } catch { return false; }
+}
+
 export async function consultarAcceso(): Promise<Acceso> {
-  const { data, error } = await supabase.rpc("picada_acceso", { p_dispositivo: dispositivo(), p_nombre: nombreDispositivo() });
+  const { data, error } = await conTiempo(supabase.rpc("picada_acceso", { p_dispositivo: dispositivo(), p_nombre: nombreDispositivo() }), 10000);
   if (error) throw new Error(error.message);
   const a = { ...(data as Acceso), revisado: new Date().toISOString() };
   guardarAcceso(a);
@@ -88,15 +101,17 @@ export async function borrarDatosGuardados() {
 }
 
 export async function token(): Promise<string | null> {
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? null;
+  try {
+    const { data } = await conTiempo(supabase.auth.getSession(), 10000);
+    return data.session?.access_token ?? null;
+  } catch { return null; }
 }
 export const sesionActual = async (): Promise<Session | null> => (await supabase.auth.getSession()).data.session;
 
 async function funcion<T = any>(nombre: string, cuerpo: Record<string, unknown>): Promise<T> {
   const t = await token();
   const r = await fetch(`${SUPA_URL}/functions/v1/${nombre}`, {
-    method: "POST",
+    method: "POST", signal: AbortSignal.timeout(20000),
     headers: { "Content-Type": "application/json", apikey: SUPA_CLAVE, Authorization: `Bearer ${t ?? SUPA_CLAVE}` },
     body: JSON.stringify(cuerpo)
   });

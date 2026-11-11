@@ -31,10 +31,10 @@ async function abrirCache(): Promise<Cache | null> {
 async function leerGuardado(c: Cache | null, a: string) {
   try { const r = await c?.match(clave(a)); return r ? await r.json() : null; } catch { return null; }
 }
-async function pedir(a: string, t: string | null): Promise<{ texto: string; datos: any } | null> {
+async function pedir(a: string, t: string | null, ms = 90000): Promise<{ texto: string; datos: any } | null> {
   if (!t || !navigator.onLine) return null;
   try {
-    const r = await fetch(`/api/datos?archivo=${encodeURIComponent(a)}`, { headers: { Authorization: `Bearer ${t}`, "X-Dispositivo": dispositivo() }, cache: "no-store" });
+    const r = await fetch(`/api/datos?archivo=${encodeURIComponent(a)}`, { headers: { Authorization: `Bearer ${t}`, "X-Dispositivo": dispositivo() }, cache: "no-store", signal: AbortSignal.timeout(ms) });
     if (r.status === 401 || r.status === 403) throw new Error("sin-acceso");
     if (!r.ok) return null;
     const texto = await r.text();
@@ -47,18 +47,16 @@ async function pedir(a: string, t: string | null): Promise<{ texto: string; dato
 const guardar = (c: Cache | null, a: string, texto: string) =>
   c?.put(clave(a), new Response(texto, { headers: { "Content-Type": "application/json" } })).catch(() => undefined);
 
-/** Baja los archivos solo si cambió la versión (meta.generado); si no hay señal usa lo guardado. */
-async function traerTodo() {
-  const c = await abrirCache();
+/** Baja lo que falte o lo que cambió (según meta.generado). */
+async function actualizar(c: Cache | null, forzarTodo: boolean) {
   const t = await token();
   const metaLocal = await leerGuardado(c, "meta.json");
-  let meta = metaLocal;
   let nuevo: Awaited<ReturnType<typeof pedir>> = null;
-  try { nuevo = await pedir("meta.json", t); } catch { throw new Error("Tu acceso no está vigente. Volvé a abrir la app con señal."); }
+  try { nuevo = await pedir("meta.json", t, 15000); } catch { throw new Error("Tu acceso no está vigente. Volvé a abrir la app con señal."); }
   const cambio = !!nuevo && nuevo.datos?.generado !== metaLocal?.generado;
   const res: Record<string, any> = {};
   await Promise.all(ARCHIVOS.map(async (a) => {
-    let d = cambio ? null : await leerGuardado(c, a);
+    let d = cambio || forzarTodo ? null : await leerGuardado(c, a);
     if (!d) {
       const r = await pedir(a, t).catch(() => null);
       if (r) { d = r.datos; await guardar(c, a, r.texto); }
@@ -66,8 +64,24 @@ async function traerTodo() {
     }
     res[a] = d;
   }));
-  if (nuevo && res["pozos.json"]) { meta = nuevo.datos; await guardar(c, "meta.json", nuevo.texto); }
-  return { res, meta };
+  if (nuevo && res["pozos.json"]) await guardar(c, "meta.json", nuevo.texto);
+  return { res, meta: nuevo?.datos ?? metaLocal };
+}
+
+/**
+ * Si el teléfono ya tiene los datos, los usa al instante y busca novedades por detrás
+ * (quedan para la próxima vez que se abra). Si no los tiene, los baja ahora.
+ */
+async function traerTodo() {
+  const c = await abrirCache();
+  const meta = await leerGuardado(c, "meta.json");
+  const guardados: Record<string, any> = {};
+  await Promise.all(ARCHIVOS.map(async (a) => { guardados[a] = await leerGuardado(c, a); }));
+  if (meta && guardados["pozos.json"]) {
+    if (navigator.onLine) actualizar(c, false).catch(() => undefined);
+    return { res: guardados, meta };
+  }
+  return actualizar(c, false);
 }
 
 async function cargar(): Promise<Datos> {

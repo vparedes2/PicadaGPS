@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { LogOut, ShieldAlert, WifiOff, Smartphone } from "lucide-react";
 import {
-  supabase, consultarAcceso, accesoGuardado, accesoSinSenal, relojAtrasado, salir, diaLargo, DIAS_SIN_SENAL, type Acceso as TAcceso
+  supabase, consultarAcceso, accesoGuardado, accesoSinSenal, relojAtrasado, salir, conTiempo, haySesionGuardada, diaLargo, DIAS_SIN_SENAL, type Acceso as TAcceso
 } from "../lib/cuenta";
 import Ingreso from "./Ingreso";
 import { reiniciarDatos } from "../lib/datos";
@@ -42,14 +42,19 @@ export default function Acceso({ children }: { children: (a: TAcceso, recargar: 
   const [revisando, setRevisando] = useState(false);
 
   const revisar = useCallback(async () => {
-    const { data } = await supabase.auth.getSession();
     const guardado = accesoGuardado();
-    if (!navigator.onLine) {
-      if (data.session && accesoSinSenal(guardado)) setVista({ tipo: "ok", a: guardado! });
-      else setVista({ tipo: "sin_senal" });
-      return;
-    }
-    if (!data.session) { setVista({ tipo: "ingresar" }); return; }
+    // Sin señal (o con señal tan débil que no responde) se usa lo guardado, sin esperar a la red
+    const usarGuardado = () => {
+      if (haySesionGuardada() && accesoSinSenal(guardado)) { setVista({ tipo: "ok", a: guardado! }); return true; }
+      return false;
+    };
+    if (!navigator.onLine) { if (!usarGuardado()) setVista({ tipo: "sin_senal" }); return; }
+    // Si ya había acceso confirmado, la app abre al instante y la cuenta se revisa por detrás
+    if (accesoSinSenal(guardado) && haySesionGuardada()) setVista((v) => (v.tipo === "cargando" ? { tipo: "ok", a: guardado! } : v));
+    let sesion = null;
+    try { sesion = (await conTiempo(supabase.auth.getSession(), 10000)).data.session; }
+    catch { if (!usarGuardado()) setVista({ tipo: "error", msj: "La conexión está muy lenta." }); return; }
+    if (!sesion) { setVista({ tipo: "ingresar" }); return; }
     try {
       const a = await consultarAcceso();
       if (!a.acceso) reiniciarDatos();
@@ -63,7 +68,8 @@ export default function Acceso({ children }: { children: (a: TAcceso, recargar: 
 
   useEffect(() => {
     revisar();
-    const { data: sub } = supabase.auth.onAuthStateChange((ev) => { if (ev === "SIGNED_IN" || ev === "SIGNED_OUT") revisar(); });
+    // Fuera del aviso de Supabase (llamarlo adentro puede trabar la sesión)
+    const { data: sub } = supabase.auth.onAuthStateChange((ev) => { if (ev === "SIGNED_IN" || ev === "SIGNED_OUT") setTimeout(revisar, 0); });
     const enLinea = () => revisar();
     addEventListener("online", enLinea);
     return () => { sub.subscription.unsubscribe(); removeEventListener("online", enLinea); };
