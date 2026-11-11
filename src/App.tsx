@@ -60,7 +60,8 @@ function Inicio({ datos, favoritos, recientes, onElegir, onSacarFav }: { datos: 
       <section className="rounded-lg border border-linea bg-panel p-3 text-[13px] leading-relaxed">
         <h2 className="flex items-center gap-2 font-semibold mb-1"><Info className="w-4 h-4" /> Datos cargados en este teléfono</h2>
         <ul className="text-tenue">
-          <li>{(m?.pozos?.cantidad ?? datos.pozos.length).toLocaleString("es-AR")} pozos · padrón de la Secretaría de Energía de la Nación · {fecha(m?.pozos?.fecha)}</li>
+          <li>{(m?.pozos?.cantidad ?? datos.pozos.length).toLocaleString("es-AR")} pozos · padrón de la Secretaría de Energía de la Nación, descargado el {fecha(m?.pozos?.fecha)}
+            {(m?.pozos as any)?.ultimo_inicio_perforacion && <> · el pozo más nuevo empezó a perforarse el {fecha((m?.pozos as any).ultimo_inicio_perforacion)} (las operadoras declaran con unos meses de atraso)</>}</li>
           <li>{datos.instalaciones.length.toLocaleString("es-AR")} instalaciones · SIG Hidrocarburos de Neuquén · {fecha(m?.instalaciones?.fecha)}</li>
           {m?.areas && <li>{m.areas.cantidad} áreas de concesión · {fecha(m.areas.fecha)}</li>}
           <li>{m?.rutas ? `${m.rutas.cantidad.toLocaleString("es-AR")} tramos de rutas · ${m.rutas.fuente} · ${fecha(m.rutas.fecha)}` : "Rutas: todavía no cargadas"}</li>

@@ -93,7 +93,32 @@ def lineas(geom):
 
 
 # ---------------------------------------------------------------- pozos
+PADRON_URL = os.environ.get("PADRON_URL", "http://datos.energia.gob.ar/dataset/c846e79c-026c-4040-897f-1ad3543b407c/resource/cb5c0f04-7835-45cd-b982-3e25ca7d7751/download/capitulo-iv-pozos.csv")
+
+
+def descargar_padron():
+    """Baja el padrón nacional completo y guarda solo los pozos de Neuquén (el archivo de todo el país es grande)."""
+    import io
+    crudo = descargar(PADRON_URL, 600).decode("utf-8-sig", "ignore")
+    lector = csv.DictReader(io.StringIO(crudo))
+    filas = [r for r in lector if (r.get("provincia") or "").strip().lower() in ("neuquén", "neuquen")]
+    if len(filas) < 10000:
+        raise RuntimeError(f"el padrón trajo solo {len(filas)} pozos de Neuquén")
+    ruta = os.path.join(FUENTE, "pozos-capitulo-iv.csv")
+    with open(ruta, "w", encoding="utf-8", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=lector.fieldnames)
+        w.writeheader(); w.writerows(filas)
+    with open(os.path.join(FUENTE, "pozos-capitulo-iv.fecha"), "w") as f:
+        f.write(datetime.now(timezone.utc).date().isoformat())
+    print(f"  padrón descargado: {len(filas)} pozos de Neuquén")
+
+
 def preparar_pozos():
+    if not LOCAL:
+        try:
+            descargar_padron()
+        except Exception as e:
+            print(f"  ! padrón de pozos: no se pudo descargar ({e}); uso la copia guardada")
     ruta = os.path.join(FUENTE, "pozos-capitulo-iv.csv")
     dic = {k: [] for k in ("area", "empresa", "yacimiento", "tipo", "estado", "recurso", "extraccion")}
     pos = {k: {} for k in dic}
@@ -119,7 +144,8 @@ def preparar_pozos():
                 cod("extraccion", r["tipoextraccion"]), round(lat, 6), round(lon, 6),
                 int(r["idpozo"]) if r["idpozo"].isdigit() else None, (r["adjiv_fecha_inicio_perf"] or "")[:10] or None,
             ])
-    fecha = datetime.fromtimestamp(os.path.getmtime(ruta), timezone.utc).date().isoformat()
+    marca = os.path.join(FUENTE, "pozos-capitulo-iv.fecha")
+    fecha = open(marca).read().strip() if os.path.exists(marca) else datetime.fromtimestamp(os.path.getmtime(ruta), timezone.utc).date().isoformat()
     return {"campos": ["sigla", "area", "empresa", "yacimiento", "tipo", "estado", "recurso", "extraccion", "lat", "lon", "idpozo", "inicio_perf"],
             "dic": dic, "filas": filas}, fecha
 
@@ -327,7 +353,8 @@ def main():
 
     pozos, f_pozos = preparar_pozos()
     guardar("pozos.json", pozos)
-    meta["fuentes"]["pozos"] = {"fecha": f_pozos, "cantidad": len(pozos["filas"]),
+    ultimo = max((f[11] for f in pozos["filas"] if f[11]), default=None)
+    meta["fuentes"]["pozos"] = {"fecha": f_pozos, "cantidad": len(pozos["filas"]), "ultimo_inicio_perforacion": ultimo,
                                 "fuente": "Secretaría de Energía de la Nación, padrón de pozos Capítulo IV"}
 
     inst, f_inst, o_inst = con_respaldo("instalaciones.json", capa_monitor("instalaciones"))
