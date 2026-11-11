@@ -50,7 +50,11 @@ export default function Ingreso({ aviso }: { aviso?: ReactNode }) {
   const [p, setP] = useState<Precios | null>(null);
   const [creditos, setCreditos] = useState(false);
   const [quieto] = useState(() => { try { return matchMedia("(prefers-reduced-motion: reduce)").matches; } catch { return false; } });
-  useEffect(() => { consultarPrecios().then(setP).catch(() => setP(null)); }, []);
+  // Precios: se muestran los últimos conocidos mientras llega (o si falla) la consulta del día
+  useEffect(() => {
+    try { const v = localStorage.getItem("picadagps.precios"); if (v) setP(JSON.parse(v)); } catch { /* nada */ }
+    consultarPrecios().then((x) => { setP(x); try { localStorage.setItem("picadagps.precios", JSON.stringify(x)); } catch { /* nada */ } }).catch(() => undefined);
+  }, []);
 
   const tri = p?.planes.trimestral, anu = p?.planes.anual;
   const ahorro = tri && anu ? tri.usd * 4 - anu.usd : 0;
@@ -78,10 +82,13 @@ export default function Ingreso({ aviso }: { aviso?: ReactNode }) {
         <div className="relative mx-auto w-[210px] rounded-[24px] border-[5px] border-[#1c1a17] bg-[#1c1a17] shadow-xl overflow-hidden">
           <video
             className="block w-full aspect-[390/780] bg-[#ddd5c3]"
-            src="/demo/picadagps-demo.mp4" poster="/demo/poster.jpg"
+            poster="/demo/poster.jpg"
             autoPlay={!quieto} muted loop playsInline preload="metadata"
             aria-label="Demostración: se escribe la sigla de un pozo, se elige el resultado y el mapa se acerca hasta la locación con la línea desde la ruta"
-          />
+          >
+            <source src="/demo/picadagps-demo.webm" type="video/webm" />
+            <source src="/demo/picadagps-demo.mp4" type="video/mp4" />
+          </video>
         </div>
 
         <div className="rounded-xl border-2 border-acento bg-panel p-3 text-center">
@@ -99,7 +106,7 @@ export default function Ingreso({ aviso }: { aviso?: ReactNode }) {
           <div className="grid grid-cols-2 gap-2">
             <button onClick={() => consultar("trimestral")} className="text-left rounded-xl border border-linea bg-panel p-3 active:scale-[.98] transition">
               <p className="text-[13px] font-semibold">Trimestral</p>
-              <p className="num text-[20px] font-bold">US$ {tri?.usd ?? "…"}</p>
+              <p className="num text-[20px] font-bold">US$ {tri?.usd ?? 20}</p>
               <p className="num text-[12px] text-tenue">{tri ? `${pesos(tri.ars)} hoy` : "\u00a0"}</p>
               <p className="text-[12px] text-tenue">3 meses</p>
               <p className="mt-1.5 flex items-center gap-1 text-[12px] font-semibold text-acento"><MessageCircle className="w-3.5 h-3.5" /> Consultar</p>
@@ -107,7 +114,7 @@ export default function Ingreso({ aviso }: { aviso?: ReactNode }) {
             <button onClick={() => consultar("anual")} className="text-left rounded-xl border border-acento bg-panel p-3 relative active:scale-[.98] transition">
               {ahorro > 0 && <span className="absolute -top-2.5 right-2 px-1.5 py-0.5 rounded-md bg-acento text-acento-texto text-[11px] font-semibold">Ahorrás US$ {ahorro}</span>}
               <p className="text-[13px] font-semibold">Anual</p>
-              <p className="num text-[20px] font-bold">US$ {anu?.usd ?? "…"}</p>
+              <p className="num text-[20px] font-bold">US$ {anu?.usd ?? 70}</p>
               <p className="num text-[12px] text-tenue">{anu ? `${pesos(anu.ars)} hoy` : "\u00a0"}</p>
               <p className="text-[12px] text-tenue">12 meses</p>
               <p className="mt-1.5 flex items-center gap-1 text-[12px] font-semibold text-acento"><MessageCircle className="w-3.5 h-3.5" /> Consultar</p>
