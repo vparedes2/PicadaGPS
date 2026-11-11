@@ -196,7 +196,7 @@ def rutas_osm():
     q = f"""[out:json][timeout:240];
 way["highway"~"^(motorway|trunk|primary|secondary|tertiary)$"]({BBOX[1]},{BBOX[0]},{BBOX[3]},{BBOX[2]});
 out geom tags;"""
-    d = json.loads(descargar("https://overpass-api.de/api/interpreter", 300, urllib.parse.urlencode({"data": q}).encode()))
+    d = overpass(q)
     feats = []
     for w in d.get("elements", []):
         t = w.get("tags", {})
@@ -213,6 +213,25 @@ out geom tags;"""
     return {"type": "FeatureCollection", "features": feats, "fuente": "OpenStreetMap (Overpass)"}
 
 
+OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter",
+            "https://overpass.private.coffee/api/interpreter", "https://maps.mail.ru/osm/tools/overpass/api/interpreter"]
+
+
+def overpass(q, timeout=300):
+    """Prueba varios servidores de Overpass: el principal suele estar saturado (502/504)."""
+    import time
+    ultimo = None
+    for intento in range(2):
+        for url in OVERPASS:
+            try:
+                return json.loads(descargar(url, timeout, urllib.parse.urlencode({"data": q}).encode()))
+            except Exception as e:
+                ultimo = e
+                print(f"    Overpass {url.split('/')[2]}: {e}")
+        time.sleep(20)
+    raise RuntimeError(f"ningún servidor de Overpass respondió ({ultimo})")
+
+
 # Zona petrolera de Neuquén (de El Trapial y Rincón de los Sauces hasta el sur de Añelo)
 ZONA_CAMINOS = (-70.4, -39.3, -67.8, -36.9)
 
@@ -220,17 +239,23 @@ ZONA_CAMINOS = (-70.4, -39.3, -67.8, -36.9)
 def caminos_osm():
     """Caminos de yacimiento: en OpenStreetMap figuran como 'unclassified', 'track' o 'service'.
     Se dejan afuera las huellas de peor categoría (grade4/grade5), estacionamientos y accesos a casas."""
-    w, s_, e, n = ZONA_CAMINOS
-    q = f"""[out:json][timeout:300];
+    W, S, E, N = ZONA_CAMINOS
+    # En cuatro partes para no saturar el servidor
+    elementos, vistos = [], set()
+    mx, my = (W + E) / 2, (S + N) / 2
+    for (w, s_, e, n) in [(W, S, mx, my), (mx, S, E, my), (W, my, mx, N), (mx, my, E, N)]:
+        q = f"""[out:json][timeout:240];
 (
   way["highway"="unclassified"]({s_},{w},{n},{e});
   way["highway"="track"]["tracktype"!~"grade4|grade5"]({s_},{w},{n},{e});
   way["highway"="service"]["service"!~"driveway|parking_aisle|drive-through"]({s_},{w},{n},{e});
 );
 out geom tags;"""
-    d = json.loads(descargar("https://overpass-api.de/api/interpreter", 360, urllib.parse.urlencode({"data": q}).encode()))
+        for el in overpass(q).get("elements", []):
+            if el.get("id") not in vistos:
+                vistos.add(el.get("id")); elementos.append(el)
     feats = []
-    for w_ in d.get("elements", []):
+    for w_ in elementos:
         t = w_.get("tags", {})
         coords = [[g["lon"], g["lat"]] for g in w_.get("geometry", [])]
         if len(coords) < 2:
