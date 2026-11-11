@@ -8,6 +8,37 @@ const LOGO_GOOGLE = (
   <svg viewBox="0 0 48 48" className="w-5 h-5" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
 );
 
+/** Satélite y punto GPS flotando de fondo, con la señal punteada entre ambos. Solo decoración. */
+function Flotantes() {
+  return (
+    <div className="flota-capa" aria-hidden="true">
+      <svg className="flota-senal" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <path d="M88 22 Q 60 18 12 44" fill="none" stroke="var(--acento)" strokeWidth="0.5" strokeLinecap="round" vectorEffect="non-scaling-stroke" opacity=".55" />
+      </svg>
+      <svg className="flota-sat" viewBox="0 0 120 80">
+        <g className="panel">
+          <rect x="4" y="28" width="38" height="24" rx="2" fill="#2b5c8a" stroke="#1d3f60" strokeWidth="2" />
+          <path d="M17 28v24M29 28v24M4 40h38" stroke="#7fb0dc" strokeWidth="1.2" />
+          <rect x="78" y="28" width="38" height="24" rx="2" fill="#2b5c8a" stroke="#1d3f60" strokeWidth="2" />
+          <path d="M91 28v24M103 28v24M78 40h38" stroke="#7fb0dc" strokeWidth="1.2" />
+        </g>
+        <path d="M42 40h8M70 40h8" stroke="#5f5a52" strokeWidth="3" />
+        <rect x="50" y="26" width="20" height="28" rx="3" fill="#d9d3c7" stroke="#5f5a52" strokeWidth="2" />
+        <path d="M60 54v8" stroke="#5f5a52" strokeWidth="2" />
+        <path d="M52 68a8 6 0 0 0 16 0z" fill="#c2410c" />
+        <circle cx="60" cy="20" r="3" fill="#f5c542" />
+        <path d="M60 23v3" stroke="#5f5a52" strokeWidth="2" />
+      </svg>
+      <svg className="flota-pin" viewBox="0 0 56 80">
+        <ellipse className="onda" cx="28" cy="70" rx="20" ry="7" fill="none" stroke="var(--acento)" strokeWidth="2" />
+        <ellipse className="onda b" cx="28" cy="70" rx="20" ry="7" fill="none" stroke="var(--acento)" strokeWidth="2" />
+        <path d="M28 4C16 4 8 13 8 24c0 15 20 42 20 42s20-27 20-42C48 13 40 4 28 4z" fill="#1f3a2e" />
+        <circle cx="28" cy="24" r="8" fill="#c2410c" stroke="#f4f1ea" strokeWidth="3" />
+      </svg>
+    </div>
+  );
+}
+
 const VENTAJAS = [
   { i: Search, t: "Buscá por sigla, pad, área u operadora" },
   { i: Route, t: "Cómo llegar desde la ruta y la instalación más cercana" },
@@ -25,8 +56,9 @@ export default function Ingreso({ aviso }: { aviso?: ReactNode }) {
   const ahorro = tri && anu ? tri.usd * 4 - anu.usd : 0;
 
   return (
-    <div className="min-h-full bg-fondo overflow-y-auto">
-      <div className="w-full max-w-sm mx-auto p-4 flex flex-col gap-4">
+    <div className="min-h-full bg-fondo overflow-y-auto relative">
+      <Flotantes />
+      <div className="relative z-10 w-full max-w-sm mx-auto p-4 flex flex-col gap-4">
         <div className="text-center">
           <div className="flex items-center justify-center gap-2">
             <img src="/icono.svg" alt="" className="w-10 h-10" />
