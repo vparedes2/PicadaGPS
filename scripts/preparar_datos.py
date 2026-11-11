@@ -1,5 +1,5 @@
 """
-Prepara los datos que la app guarda en el celular (public/datos/).
+Prepara los datos de la app (carpeta datos/, fuera de public: solo se entregan a usuarios con acceso por /api/datos).
 
   pozos.json          padrón de pozos de Neuquén (Capítulo IV, Secretaría de Energía de la Nación)
   instalaciones.json  baterías, plantas y compresoras (SIG Hidrocarburos de Neuquén)
@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FUENTE = os.path.join(RAIZ, "data", "fuente")
-SALIDA = os.path.join(RAIZ, "public", "datos")
+SALIDA = os.path.join(RAIZ, "datos")
 LOCAL = "--local" in sys.argv
 # El monitor ambiental ya consulta el GeoServer provincial y expone sus capas limpias
 MONITOR = os.environ.get("MONITOR_URL", "https://monitorambiental.victorparedes.ar")
@@ -354,35 +354,30 @@ def main():
     pozos, f_pozos = preparar_pozos()
     guardar("pozos.json", pozos)
     ultimo = max((f[11] for f in pozos["filas"] if f[11]), default=None)
-    meta["fuentes"]["pozos"] = {"fecha": f_pozos, "cantidad": len(pozos["filas"]), "ultimo_inicio_perforacion": ultimo,
-                                "fuente": "Secretaría de Energía de la Nación, padrón de pozos Capítulo IV"}
+    meta["fuentes"]["pozos"] = {"fecha": f_pozos, "cantidad": len(pozos["filas"]), "ultimo_inicio_perforacion": ultimo}
 
     inst, f_inst, o_inst = con_respaldo("instalaciones.json", capa_monitor("instalaciones"))
     inst = preparar_instalaciones(inst)
     guardar("instalaciones.json", inst)
-    meta["fuentes"]["instalaciones"] = {"fecha": f_inst, "cantidad": len(inst["filas"]), "origen": o_inst,
-                                        "fuente": "SIG Hidrocarburos, Subsecretaría de Energía de Neuquén"}
+    meta["fuentes"]["instalaciones"] = {"fecha": f_inst, "cantidad": len(inst["filas"]), "origen": o_inst}
 
     areas, f_areas, o_areas = con_respaldo("areas.json", capa_monitor("areas"))
     if areas:
         areas = preparar_areas(areas)
         guardar("areas.geojson", areas)
-        meta["fuentes"]["areas"] = {"fecha": f_areas, "cantidad": len(areas["features"]), "origen": o_areas,
-                                    "fuente": "SIG Hidrocarburos, Subsecretaría de Energía de Neuquén"}
+        meta["fuentes"]["areas"] = {"fecha": f_areas, "cantidad": len(areas["features"]), "origen": o_areas}
 
     rutas, f_rutas, o_rutas = con_respaldo("rutas.json", obtener_rutas)
     if rutas:
-        fuente_rutas = rutas.get("fuente", "")
         rutas = preparar_rutas(rutas)
         guardar("rutas.geojson", rutas)
-        meta["fuentes"]["rutas"] = {"fecha": f_rutas, "cantidad": len(rutas["features"]), "origen": o_rutas, "fuente": fuente_rutas}
+        meta["fuentes"]["rutas"] = {"fecha": f_rutas, "cantidad": len(rutas["features"]), "origen": o_rutas}
 
     caminos, f_cam, o_cam = con_respaldo("caminos.json", caminos_osm)
     if caminos:
-        fuente_cam = caminos.get("fuente", "")
         caminos = preparar_caminos(caminos)
         guardar("caminos.geojson", caminos)
-        meta["fuentes"]["caminos"] = {"fecha": f_cam, "cantidad": len(caminos["features"]), "origen": o_cam, "fuente": fuente_cam}
+        meta["fuentes"]["caminos"] = {"fecha": f_cam, "cantidad": len(caminos["features"]), "origen": o_cam}
 
     if not LOCAL:
         explorar_capas()

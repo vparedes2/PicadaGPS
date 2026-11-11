@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, Satellite, Map as MapaIcono, Star, Clock, WifiOff, Info, Factory, X, Crosshair } from "lucide-react";
+import { Search, Satellite, Map as MapaIcono, Star, Clock, WifiOff, Info, Factory, X, Crosshair, UserRound } from "lucide-react";
 import Mapa from "./components/Mapa";
 import Ficha from "./components/Ficha";
 import { useDatos, esPozo, nombreDe, type Datos, type Pozo, type Instalacion } from "./lib/datos";
@@ -7,6 +7,9 @@ import { buscarPorPartes } from "./lib/buscar";
 import { rutaMasCercana } from "./lib/geo";
 import type { Linea } from "./components/Mapa";
 import { useLista } from "./lib/guardado";
+import type { Acceso } from "./lib/cuenta";
+import Cuenta, { textoEstado } from "./components/Cuenta";
+import Creditos from "./components/Creditos";
 
 function useEnLinea() {
   const [en, setEn] = useState(navigator.onLine);
@@ -37,7 +40,7 @@ function Fila({ x, onClick, derecha }: { x: Pozo | Instalacion; onClick: () => v
   );
 }
 
-function Inicio({ datos, favoritos, recientes, onElegir, onSacarFav }: { datos: Datos; favoritos: string[]; recientes: string[]; onElegir: (k: string) => void; onSacarFav: (k: string) => void }) {
+function Inicio({ datos, favoritos, recientes, onElegir, onSacarFav, onCreditos }: { datos: Datos; favoritos: string[]; recientes: string[]; onElegir: (k: string) => void; onSacarFav: (k: string) => void; onCreditos: () => void }) {
   const fav = favoritos.map((k) => datos.porClave.get(k)).filter(Boolean) as (Pozo | Instalacion)[];
   const rec = recientes.filter((k) => !favoritos.includes(k)).map((k) => datos.porClave.get(k)).filter(Boolean).slice(0, 10) as (Pozo | Instalacion)[];
   const m = datos.meta?.fuentes;
@@ -60,21 +63,25 @@ function Inicio({ datos, favoritos, recientes, onElegir, onSacarFav }: { datos: 
       <section className="rounded-lg border border-linea bg-panel p-3 text-[13px] leading-relaxed">
         <h2 className="flex items-center gap-2 font-semibold mb-1"><Info className="w-4 h-4" /> Datos cargados en este teléfono</h2>
         <ul className="text-tenue">
-          <li>{(m?.pozos?.cantidad ?? datos.pozos.length).toLocaleString("es-AR")} pozos · padrón de la Secretaría de Energía de la Nación, descargado el {fecha(m?.pozos?.fecha)}
-            {(m?.pozos as any)?.ultimo_inicio_perforacion && <> · el pozo más nuevo empezó a perforarse el {fecha((m?.pozos as any).ultimo_inicio_perforacion)} (las operadoras declaran con unos meses de atraso)</>}</li>
-          <li>{datos.instalaciones.length.toLocaleString("es-AR")} instalaciones · SIG Hidrocarburos de Neuquén · {fecha(m?.instalaciones?.fecha)}</li>
+          <li>{(m?.pozos?.cantidad ?? datos.pozos.length).toLocaleString("es-AR")} pozos · padrón al {fecha(m?.pozos?.fecha)}
+            {m?.pozos?.ultimo_inicio_perforacion && <> · el más nuevo empezó a perforarse el {fecha(m.pozos.ultimo_inicio_perforacion)} (las operadoras declaran con unos meses de atraso)</>}</li>
+          <li>{datos.instalaciones.length.toLocaleString("es-AR")} instalaciones · {fecha(m?.instalaciones?.fecha)}</li>
           {m?.areas && <li>{m.areas.cantidad} áreas de concesión · {fecha(m.areas.fecha)}</li>}
-          <li>{m?.rutas ? `${m.rutas.cantidad.toLocaleString("es-AR")} tramos de rutas · ${m.rutas.fuente} · ${fecha(m.rutas.fecha)}` : "Rutas: todavía no cargadas"}</li>
+          {m?.rutas && <li>{m.rutas.cantidad.toLocaleString("es-AR")} tramos de rutas · {fecha(m.rutas.fecha)}</li>}
+          {m?.caminos && <li>{m.caminos.cantidad.toLocaleString("es-AR")} tramos de caminos de yacimiento · {fecha(m.caminos.fecha)}</li>}
         </ul>
         <p className="mt-2 text-tenue">Todo funciona sin señal una vez abierta la app con conexión. Para instalarla: en el menú del navegador, «Agregar a pantalla de inicio».</p>
         <p className="mt-2 text-tenue">Las coordenadas son las declaradas por las operadoras. Antes de salir, confirmá el acceso con la operadora. No uses la app mientras manejás.</p>
+        <button onClick={onCreditos} className="mt-2 underline text-tenue">Créditos</button>
       </section>
     </div>
   );
 }
 
-export default function App() {
+export default function App({ acceso }: { acceso: Acceso }) {
   const { datos, error } = useDatos();
+  const [verCuenta, setVerCuenta] = useState(false);
+  const [verCreditos, setVerCreditos] = useState(false);
   const enLinea = useEnLinea();
   const [q, setQ] = useState("");
   const [sel, setSel] = useState<string | null>(null);
@@ -118,7 +125,7 @@ export default function App() {
     );
   };
 
-  if (error) return <div className="p-6 text-[15px]">{error}</div>;
+  if (error) return <div className="p-6 text-[15px] flex flex-col gap-3">{error}<button onClick={() => location.reload()} className="self-start underline">Reintentar</button></div>;
 
   return (
     <div className="h-full flex flex-col md:flex-row">
@@ -126,8 +133,13 @@ export default function App() {
       <aside className="order-2 md:order-1 md:w-[420px] md:h-full h-[48%] flex flex-col bg-fondo border-t md:border-t-0 md:border-r border-linea">
         <div className="p-3 pb-2 flex flex-col gap-2 border-b border-linea">
           <div className="flex items-center justify-between">
-            <h1 className="text-[18px] font-bold tracking-tight">Picada<span className="text-acento">GPS</span> <span className="text-[12px] font-normal text-tenue">· pozos de Neuquén</span></h1>
-            {!enLinea && <span className="flex items-center gap-1 text-[12px] text-tenue"><WifiOff className="w-4 h-4" /> Sin señal</span>}
+            <h1 className="text-[18px] font-bold tracking-tight">Picada<span className="text-acento">GPS</span> <span className="hidden sm:inline text-[12px] font-normal text-tenue">· pozos de Neuquén</span></h1>
+            <span className="flex items-center gap-2">
+              {!enLinea && <span className="flex items-center gap-1 text-[12px] text-tenue"><WifiOff className="w-4 h-4" /> Sin señal</span>}
+              <button onClick={() => setVerCuenta(true)} className={`flex items-center gap-1 px-2 py-1 rounded-md border text-[12px] ${acceso.estado === "prueba" ? "border-acento text-acento" : "border-linea text-tenue"}`}>
+                <UserRound className="w-4 h-4" /> {textoEstado(acceso)}
+              </button>
+            </span>
           </div>
           <label className="relative block">
             <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-tenue" />
@@ -149,7 +161,7 @@ export default function App() {
                 onElegir={(k) => elegir(k)} onVer={(lat, lon, zoom) => setCentrar({ lat, lon, zoom, n: Date.now() })}
                 yo={yo} onUbicarme={() => ubicarme()} ubicando={ubicando}
                 linea={linea} onLinea={(desde, tipo) => setLinea({ desde, tipo, n: Date.now() })} />
-            ) : <Inicio datos={datos} favoritos={favs.lista} recientes={recs.lista} onElegir={(k) => elegir(k)} onSacarFav={favs.sacar} />}
+            ) : <Inicio datos={datos} favoritos={favs.lista} recientes={recs.lista} onElegir={(k) => elegir(k)} onSacarFav={favs.sacar} onCreditos={() => setVerCreditos(true)} />}
           {avisoGps && <p className="text-[13px] text-alerta mt-2">{avisoGps}</p>}
         </div>
       </aside>
@@ -170,6 +182,8 @@ export default function App() {
           </button>
         </div>
       </main>
+      {verCuenta && <Cuenta a={acceso} onCerrar={() => setVerCuenta(false)} />}
+      {verCreditos && <Creditos onCerrar={() => setVerCreditos(false)} />}
     </div>
   );
 }

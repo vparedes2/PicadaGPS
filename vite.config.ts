@@ -26,9 +26,11 @@ export default defineConfig({
         ]
       },
       workbox: {
-        // La app y todos los datos quedan guardados en el teléfono: funciona sin señal
-        globPatterns: ["**/*.{js,css,html,svg,png,woff2}", "datos/*.{json,geojson}"],
-        maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
+        // La app queda guardada en el teléfono. Los datos no son públicos: se bajan con la sesión
+        // por /api/datos y la app los guarda aparte (src/lib/datos.ts) para usarlos sin señal.
+        globPatterns: ["**/*.{js,css,html,svg,png,woff2}"],
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
           {
             // Imagen satelital: lo que se miró (o se guardó para un favorito) queda disponible sin señal

@@ -48,3 +48,11 @@ Se puede publicar como sitio estático en Vercel, Netlify o Cloudflare Pages. El
 ## Aviso
 
 Las coordenadas son las declaradas por las operadoras a los organismos públicos. Antes de salir, confirmá el acceso con la operadora. No uses la aplicación mientras manejás.
+
+## Cuentas, prueba y pagos
+
+- Ingreso con Google (Supabase Auth). La primera vez se crea la cuenta con 7 días de prueba; `vparedes2@gmail.com` queda como administrador.
+- Al vencer la prueba o el plan, la app pide pagar: trimestral US$ 20 o anual US$ 100, en pesos al dólar del día (dolarapi.com, oficial BNA venta por defecto; se cambia en Administración → Precios). El pago es por Mercado Pago Checkout Pro y se acredita solo.
+- Los datos están en `datos/` (no en `public/`): los entrega `api/datos.ts` solo con sesión y acceso vigente. La app los guarda en el teléfono para usarlos sin señal hasta la fecha de vencimiento; al salir o al vencer se borran.
+- Base de datos: `supabase/migrations/`. Funciones: `supabase/functions/picada-pagos` (sin verificación JWT de la plataforma: la hace la función) y `picada-admin`.
+- Secretos de las funciones (Supabase → Edge Functions → Secrets): `MP_ACCESS_TOKEN` (credencial de producción de Mercado Pago). Opcional `PICADA_APP_URL`.

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "regions": ["gru1"],
+  "functions": {
+    "api/datos.ts": { "includeFiles": "datos/**", "maxDuration": 20 }
+  },
+  "rewrites": [
+    { "source": "/((?!api/|assets/|icono|manifest\\.webmanifest|sw\\.js|workbox-|registerSW\\.js).*)", "destination": "/index.html" }
+  ],
+  "headers": [
+    { "source": "/", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
+    { "source": "/index.html", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
+    { "source": "/sw.js", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] }
+  ]
+}

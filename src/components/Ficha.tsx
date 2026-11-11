@@ -144,7 +144,7 @@ export default function Ficha({ x, datos, favorito, onFavorito, onCerrar, onEleg
             <Referencia activa={activa(ref.camino)} onClick={() => onLinea({ lat: ref.camino!.lat, lon: ref.camino!.lon }, "camino")}
               icono={<Waypoints className="w-5 h-5 shrink-0 mt-0.5 text-[#7a4b00]" />}
               texto={<>A <b>{textoDist(ref.camino.d)}</b> al {cardinal(rumbo(ref.camino.lat, ref.camino.lon, lat, lon))} del camino de yacimiento más cercano{ref.camino.nombre && !/^(Camino|Huella|Camino de servicio|Camino de yacimiento)$/.test(ref.camino.nombre) ? <> (<b>{ref.camino.nombre}</b>)</> : ""}</>}
-              detalle={`Punto del camino: ${ref.camino.lat.toFixed(5)}, ${ref.camino.lon.toFixed(5)} · OpenStreetMap`}
+              detalle={`Punto del camino: ${ref.camino.lat.toFixed(5)}, ${ref.camino.lon.toFixed(5)}`}
               extra={<a href={enlaceWaze(ref.camino.lat, ref.camino.lon)} target="_blank" rel="noopener" className="text-[12px] px-2 py-1 rounded border border-linea whitespace-nowrap">Waze al camino</a>} />
           )}
           {ref.inst.map(({ i, d }) => (
