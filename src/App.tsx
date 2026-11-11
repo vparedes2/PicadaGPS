@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, Satellite, Map as MapaIcono, Star, Clock, WifiOff, Info, Factory, X, Crosshair, UserRound, Layers } from "lucide-react";
+import { Search, Satellite, Map as MapaIcono, Star, Clock, WifiOff, Info, Factory, X, Crosshair, UserRound, Layers, Share2 } from "lucide-react";
+import { compartirWhatsApp } from "./lib/compartir";
 import Mapa from "./components/Mapa";
 import Ficha from "./components/Ficha";
 import { useDatos, esPozo, nombreDe, type Datos, type Pozo, type Instalacion } from "./lib/datos";
@@ -161,6 +162,9 @@ export default function App({ acceso }: { acceso: Acceso }) {
             <h1 className="text-[18px] font-bold tracking-tight">Picada<span className="text-acento">GPS</span> <span className="hidden sm:inline text-[12px] font-normal text-tenue">· pozos de Neuquén</span></h1>
             <span className="flex items-center gap-2">
               {!enLinea && <span className="flex items-center gap-1 text-[12px] text-tenue"><WifiOff className="w-4 h-4" /> Sin señal</span>}
+              <button onClick={compartirWhatsApp} aria-label="Compartir la app por WhatsApp" title="Compartir por WhatsApp" className="p-1.5 rounded-md border border-linea text-acento">
+                <Share2 className="w-4 h-4" />
+              </button>
               <button onClick={() => setVerCuenta(true)} className={`flex items-center gap-1 px-2 py-1 rounded-md border text-[12px] ${acceso.estado === "prueba" ? "border-acento text-acento" : "border-linea text-tenue"}`}>
                 <UserRound className="w-4 h-4" /> {textoEstado(acceso)}
               </button>

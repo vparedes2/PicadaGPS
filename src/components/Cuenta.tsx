@@ -1,6 +1,7 @@
 /** Panel de la cuenta: estado del plan, renovar, pagos hechos, créditos, administración y salir. */
 import { useEffect, useState } from "react";
-import { X, LogOut, Shield, BookOpen } from "lucide-react";
+import { X, LogOut, Shield, BookOpen, Share2 } from "lucide-react";
+import { compartirWhatsApp } from "../lib/compartir";
 import { misPagos, salir, diaLargo, diasRestantes, pesos, diasSinSenalRestantes, DIAS_SIN_SENAL, type Acceso } from "../lib/cuenta";
 import { reiniciarDatos } from "../lib/datos";
 import Planes from "./Planes";
@@ -66,6 +67,7 @@ export default function Cuenta({ a, onCerrar }: { a: Acceso; onCerrar: () => voi
           {a.rol === "admin" && (
             <button onClick={() => setAdmin(true)} className="flex items-center gap-2 py-2.5 px-3 rounded-lg border border-linea bg-panel font-semibold text-[15px]"><Shield className="w-4 h-4" /> Administración</button>
           )}
+          <button onClick={compartirWhatsApp} className="flex items-center gap-2 py-2.5 px-3 rounded-lg border border-linea bg-panel text-[15px]"><Share2 className="w-4 h-4" /> Recomendar la app por WhatsApp</button>
           <button onClick={() => setCreditos(true)} className="flex items-center gap-2 py-2.5 px-3 rounded-lg border border-linea bg-panel text-[15px]"><BookOpen className="w-4 h-4" /> Créditos</button>
           <button onClick={cerrarSesion} className="flex items-center gap-2 py-2.5 px-3 rounded-lg border border-linea bg-panel text-[15px]"><LogOut className="w-4 h-4" /> Cerrar sesión</button>
           <p className="text-[12px] text-tenue px-1">Al cerrar sesión se borran los pozos guardados en este teléfono, para que nadie los use sin cuenta. Se vuelven a bajar solos la próxima vez que entres (con señal).</p>

@@ -1,7 +1,8 @@
 /** Pantalla de ingreso: demo de la app, 7 días gratis, precios de los planes y botón de Google. */
 import { useEffect, useState, type ReactNode } from "react";
-import { Search, Route, WifiOff, Navigation, MessageCircle } from "lucide-react";
+import { Search, Route, WifiOff, Navigation, MessageCircle, Share2 } from "lucide-react";
 import { ingresarConGoogle, consultarPrecios, pesos, type Precios } from "../lib/cuenta";
+import { compartirWhatsApp } from "../lib/compartir";
 import Creditos from "./Creditos";
 
 const LOGO_GOOGLE = (
@@ -52,11 +53,11 @@ export default function Ingreso({ aviso }: { aviso?: ReactNode }) {
   const [quieto] = useState(() => { try { return matchMedia("(prefers-reduced-motion: reduce)").matches; } catch { return false; } });
   // Precios: se muestran los últimos conocidos mientras llega (o si falla) la consulta del día
   useEffect(() => {
-    try { const v = localStorage.getItem("picadagps.precios"); if (v) setP(JSON.parse(v)); } catch { /* nada */ }
-    consultarPrecios().then((x) => { setP(x); try { localStorage.setItem("picadagps.precios", JSON.stringify(x)); } catch { /* nada */ } }).catch(() => undefined);
+    try { const v = JSON.parse(localStorage.getItem("picadagps.precios") || "null"); if (v?.planes?.trimestral && v?.planes?.anual) setP(v); } catch { /* nada */ }
+    consultarPrecios().then((x) => { if (!x?.planes?.trimestral || !x?.planes?.anual) return; setP(x); try { localStorage.setItem("picadagps.precios", JSON.stringify(x)); } catch { /* nada */ } }).catch(() => undefined);
   }, []);
 
-  const tri = p?.planes.trimestral, anu = p?.planes.anual;
+  const tri = p?.planes?.trimestral, anu = p?.planes?.anual;
   const ahorro = tri && anu ? tri.usd * 4 - anu.usd : 0;
   const consultar = (plan: "trimestral" | "anual") => {
     const pl = plan === "anual" ? anu : tri;
@@ -74,6 +75,9 @@ export default function Ingreso({ aviso }: { aviso?: ReactNode }) {
           <div className="flex items-center justify-center gap-2">
             <img src="/icono.svg" alt="" className="w-10 h-10" />
             <h1 className="text-[24px] font-bold tracking-tight">Picada<span className="text-acento">GPS</span></h1>
+            <button onClick={compartirWhatsApp} aria-label="Compartir por WhatsApp" title="Compartir por WhatsApp" className="ml-1 p-2 rounded-full border border-linea bg-panel">
+              <Share2 className="w-4 h-4 text-acento" />
+            </button>
           </div>
           <p className="text-[15px] text-tenue mt-1">Encontrá cualquier pozo o locación de Neuquén y llegá, aunque no haya señal.</p>
         </div>
@@ -129,6 +133,10 @@ export default function Ingreso({ aviso }: { aviso?: ReactNode }) {
             <li key={t} className="flex items-center gap-2.5"><I className="w-4 h-4 text-acento shrink-0" /> {t}</li>
           ))}
         </ul>
+
+        <button onClick={compartirWhatsApp} className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-linea bg-panel text-[15px] font-semibold">
+          <Share2 className="w-4 h-4 text-acento" /> Compartir por WhatsApp
+        </button>
 
         <div className="text-center text-[13px] text-tenue pb-2">
           <button onClick={() => setCreditos(true)} className="underline">Créditos</button>
