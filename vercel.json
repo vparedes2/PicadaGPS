@@ -8,7 +8,7 @@
     "api/datos.ts": { "includeFiles": "datos/**", "maxDuration": 20 }
   },
   "rewrites": [
-    { "source": "/((?!api/|assets/|icono|manifest\\.webmanifest|sw\\.js|workbox-|registerSW\\.js).*)", "destination": "/index.html" }
+    { "source": "/((?!api/|assets/|demo/|icono|manifest\\.webmanifest|sw\\.js|workbox-|registerSW\\.js).*)", "destination": "/index.html" }
   ],
   "headers": [
     { "source": "/", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },

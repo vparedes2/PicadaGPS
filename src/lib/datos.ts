@@ -3,7 +3,7 @@
  * (solo responde si la prueba o el plan están vigentes) y se guardan en el teléfono para usarlos sin señal.
  */
 import { useEffect, useState } from "react";
-import { CACHE_DATOS, token } from "./cuenta";
+import { CACHE_DATOS, token, dispositivo } from "./cuenta";
 import { compactar, normalizar, type Indexado } from "./buscar";
 import type { Ruta } from "./geo";
 
@@ -34,7 +34,7 @@ async function leerGuardado(c: Cache | null, a: string) {
 async function pedir(a: string, t: string | null): Promise<{ texto: string; datos: any } | null> {
   if (!t || !navigator.onLine) return null;
   try {
-    const r = await fetch(`/api/datos?archivo=${encodeURIComponent(a)}`, { headers: { Authorization: `Bearer ${t}` }, cache: "no-store" });
+    const r = await fetch(`/api/datos?archivo=${encodeURIComponent(a)}`, { headers: { Authorization: `Bearer ${t}`, "X-Dispositivo": dispositivo() }, cache: "no-store" });
     if (r.status === 401 || r.status === 403) throw new Error("sin-acceso");
     if (!r.ok) return null;
     const texto = await r.text();

@@ -1,19 +1,21 @@
 /**
  * Puerta de entrada: ingreso con Google, 7 días de prueba, después pide un plan.
- * Sin señal deja usar la app hasta la fecha confirmada la última vez que hubo conexión.
+ * Sin señal deja usar la app hasta la fecha confirmada la última vez que hubo conexión,
+ * con un máximo de 15 días sin conectarse. Cada cuenta se puede usar en un número limitado de teléfonos.
  */
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { LogOut, ShieldAlert, WifiOff } from "lucide-react";
+import { LogOut, ShieldAlert, WifiOff, Smartphone } from "lucide-react";
 import {
-  supabase, consultarAcceso, accesoGuardado, accesoSinSenal, ingresarConGoogle, salir, diaLargo, type Acceso as TAcceso
+  supabase, consultarAcceso, accesoGuardado, accesoSinSenal, relojAtrasado, salir, diaLargo, DIAS_SIN_SENAL, type Acceso as TAcceso
 } from "../lib/cuenta";
+import Ingreso from "./Ingreso";
 import { reiniciarDatos } from "../lib/datos";
 import Planes from "./Planes";
 import Creditos from "./Creditos";
 
 type Vista = { tipo: "cargando" } | { tipo: "ingresar" } | { tipo: "ok"; a: TAcceso } | { tipo: "sin_acceso"; a: TAcceso } | { tipo: "sin_senal" } | { tipo: "error"; msj: string };
 
-function Marco({ children, pie }: { children: ReactNode; pie?: ReactNode }) {
+export function Marco({ children, pie }: { children: ReactNode; pie?: ReactNode }) {
   const [creditos, setCreditos] = useState(false);
   return (
     <div className="min-h-full bg-fondo flex flex-col items-center justify-center p-4">
@@ -72,23 +74,15 @@ export default function Acceso({ children }: { children: (a: TAcceso, recargar: 
 
   if (vista.tipo === "cargando") return <Marco><p className="text-center text-[14px] text-tenue">Revisando tu cuenta…</p></Marco>;
 
-  if (vista.tipo === "ingresar")
-    return (
-      <Marco>
-        {avisoUI}
-        <button onClick={() => ingresarConGoogle()} className="flex items-center justify-center gap-3 py-3 rounded-xl border border-linea bg-panel text-[16px] font-semibold shadow-sm">
-          <svg viewBox="0 0 48 48" className="w-5 h-5" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
-          Entrar con Google
-        </button>
-        <p className="text-center text-[13px] text-tenue">Los primeros 7 días son gratis. Después elegís un plan trimestral o anual.</p>
-      </Marco>
-    );
+  if (vista.tipo === "ingresar") return <Ingreso aviso={avisoUI} />;
 
   if (vista.tipo === "sin_senal")
     return (
       <Marco>
         <p className="flex items-start gap-2 rounded-lg border border-linea bg-panel p-3 text-[14px]"><WifiOff className="w-5 h-5 shrink-0" />
-          Necesitás señal para entrar por primera vez o para renovar el acceso. Después la app funciona sin conexión.</p>
+          {relojAtrasado()
+            ? "La fecha del teléfono parece atrasada. Corregila (fecha y hora automáticas) y conectate una vez para seguir."
+            : `Conectate a internet un momento para seguir. La app funciona sin señal, pero pide conectarse al menos una vez cada ${DIAS_SIN_SENAL} días para confirmar tu cuenta.`}</p>
         <button onClick={() => revisar()} className="py-2.5 rounded-lg border border-linea bg-panel font-semibold">Reintentar</button>
       </Marco>
     );
@@ -106,7 +100,15 @@ export default function Acceso({ children }: { children: (a: TAcceso, recargar: 
     return (
       <Marco pie={<button onClick={cerrarSesion} className="flex items-center gap-1 underline"><LogOut className="w-4 h-4" /> Cerrar sesión ({a.email})</button>}>
         {avisoUI}
-        {a.estado === "bloqueado" ? (
+        {a.estado === "limite_dispositivos" ? (
+          <div className="flex items-start gap-2 rounded-lg border border-linea bg-panel p-3 text-[14px]"><Smartphone className="w-5 h-5 shrink-0 text-alerta" />
+            <div>
+              <p className="font-semibold">Tu cuenta ya se usa en {a.limite_dispositivos ?? 2} teléfonos.</p>
+              <p className="text-tenue">Cerrá sesión en alguno de ellos (Mi cuenta → Cerrar sesión) y volvé a intentar acá. Si perdiste el teléfono, escribí al administrador para liberarlo.</p>
+              <button onClick={() => revisar()} className="mt-2 py-2 px-3 rounded-lg border border-linea font-semibold">Volver a intentar</button>
+            </div>
+          </div>
+        ) : a.estado === "bloqueado" ? (
           <p className="flex items-start gap-2 rounded-lg border border-linea bg-panel p-3 text-[14px]"><ShieldAlert className="w-5 h-5 shrink-0 text-alerta" />
             Tu cuenta está suspendida. Escribí al administrador para revisarla.</p>
         ) : (

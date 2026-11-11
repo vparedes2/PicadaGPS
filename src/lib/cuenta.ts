@@ -8,10 +8,10 @@ export const supabase = createClient(SUPA_URL, SUPA_CLAVE, {
   auth: { flowType: "pkce", persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: "picadagps.sesion" }
 });
 
-export type EstadoAcceso = "admin" | "activo" | "prueba" | "vencido" | "bloqueado" | "sin_sesion";
+export type EstadoAcceso = "admin" | "activo" | "prueba" | "vencido" | "bloqueado" | "limite_dispositivos" | "sin_sesion";
 export interface Acceso {
   estado: EstadoAcceso; acceso: boolean; hasta: string | null; prueba_hasta?: string; activo_hasta?: string | null;
-  plan?: string | null; rol?: string; email?: string; nombre?: string | null;
+  plan?: string | null; rol?: string; email?: string; nombre?: string | null; limite_dispositivos?: number;
   revisado?: string; // cuándo se confirmó con el servidor (para el uso sin señal)
 }
 
@@ -23,14 +23,50 @@ const guardarAcceso = (a: Acceso | null) => {
   try { a ? localStorage.setItem(CLAVE, JSON.stringify(a)) : localStorage.removeItem(CLAVE); } catch { /* sin almacenamiento */ }
 };
 
-/** Sin señal: vale lo último confirmado mientras no haya vencido la fecha. */
-export const accesoSinSenal = (a: Acceso | null) => !!a && a.acceso && !!a.hasta && Date.parse(a.hasta) > Date.now();
+/** Identificador de esta instalación de la app (cuenta para el límite de teléfonos por cuenta). */
+export function dispositivo(): string {
+  try {
+    let id = localStorage.getItem("picadagps.dispositivo");
+    if (!id) { id = crypto.randomUUID(); localStorage.setItem("picadagps.dispositivo", id); }
+    return id;
+  } catch { return "sin-almacenamiento-" + navigator.userAgent.length; }
+}
+export function nombreDispositivo(): string {
+  const ua = navigator.userAgent;
+  const so = /Android/i.test(ua) ? "Android" : /iPhone|iPad/i.test(ua) ? "iPhone/iPad" : /Windows/i.test(ua) ? "Windows" : /Mac/i.test(ua) ? "Mac" : /Linux/i.test(ua) ? "Linux" : "Otro";
+  const nav = /Edg\//.test(ua) ? "Edge" : /SamsungBrowser/.test(ua) ? "Samsung Internet" : /CriOS|Chrome\//.test(ua) ? "Chrome" : /Firefox|FxiOS/.test(ua) ? "Firefox" : /Safari/.test(ua) ? "Safari" : "navegador";
+  return `${so} · ${nav}`;
+}
+
+/** Sin señal se pide volver a conectarse cada tantos días, aunque el plan siga vigente. */
+export const DIAS_SIN_SENAL = 15;
+const VISTO = "picadagps.visto";
+/** Guarda la fecha más adelantada que vio la app: si el reloj del teléfono se atrasa, se nota. */
+function marcarVisto() {
+  try { const v = Number(localStorage.getItem(VISTO) || 0); if (Date.now() > v) localStorage.setItem(VISTO, String(Date.now())); } catch { /* nada */ }
+}
+export function relojAtrasado(): boolean {
+  try { return Date.now() < Number(localStorage.getItem(VISTO) || 0) - 60 * 60 * 1000; } catch { return false; }
+}
+/** Sin señal: vale lo último confirmado si no venció, si se confirmó hace menos de 15 días y si el reloj no se atrasó. */
+export function accesoSinSenal(a: Acceso | null): boolean {
+  if (!a || !a.acceso || !a.hasta || !a.revisado) return false;
+  if (relojAtrasado()) return false;
+  const ahora = Date.now();
+  const ok = Date.parse(a.hasta) > ahora && ahora - Date.parse(a.revisado) < DIAS_SIN_SENAL * 86400000;
+  if (ok) marcarVisto();
+  return ok;
+}
+export const diasSinSenalRestantes = (a: Acceso | null) =>
+  a?.revisado ? Math.max(0, Math.ceil((Date.parse(a.revisado) + DIAS_SIN_SENAL * 86400000 - Date.now()) / 86400000)) : 0;
 
 export async function consultarAcceso(): Promise<Acceso> {
-  const { data, error } = await supabase.rpc("picada_acceso");
+  const { data, error } = await supabase.rpc("picada_acceso", { p_dispositivo: dispositivo(), p_nombre: nombreDispositivo() });
   if (error) throw new Error(error.message);
   const a = { ...(data as Acceso), revisado: new Date().toISOString() };
   guardarAcceso(a);
+  // La hora del servidor manda: se reinicia la marca del reloj con la fecha real de esta verificación
+  try { localStorage.setItem(VISTO, String(Date.now())); } catch { /* nada */ }
   if (!a.acceso) await borrarDatosGuardados();
   return a;
 }
@@ -39,6 +75,8 @@ export const ingresarConGoogle = () =>
   supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${location.origin}/`, queryParams: { prompt: "select_account" } } });
 
 export async function salir() {
+  // Libera este teléfono para que la cuenta pueda usarse en otro
+  if (navigator.onLine) await supabase.rpc("picada_soltar_dispositivo", { p_dispositivo: dispositivo() }).then(() => undefined, () => undefined);
   await supabase.auth.signOut().catch(() => undefined);
   guardarAcceso(null);
   await borrarDatosGuardados();

@@ -1,12 +1,13 @@
 // PicadaGPS · administración. Solo responde a cuentas con rol admin en picada_cuentas (la función verifica la sesión).
 // Acciones (POST JSON):
-//   listar                                   → usuarios, pagos y configuración
+//   listar                                   → usuarios, pagos, teléfonos y configuración
 //   cuenta     {user_id, cambios}            → activo_hasta, prueba_hasta, bloqueado, nota, plan
 //   sumar_dias {user_id, dias, campo}        → suma días a la prueba o al plan
 //   pago_manual {user_id, meses, ars, usd, nota} → registra un pago por transferencia/efectivo y extiende el plan
 //   confirmar_pago {pago_id}                 → aprueba un pedido hecho por WhatsApp y extiende el plan
 //   rechazar_pago  {pago_id}
-//   config     {dias_prueba, trimestral_usd, anual_usd, tipo_dolar, whatsapp}
+//   liberar_dispositivo {user_id, dispositivo} → libera un teléfono de la cuenta
+//   config     {dias_prueba, trimestral_usd, anual_usd, tipo_dolar, whatsapp, limite_dispositivos}
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
@@ -32,12 +33,13 @@ Deno.serve(async (req) => {
     const b = await req.json().catch(() => ({}));
 
     if (b.accion === "listar") {
-      const [cuentas, pagos, config] = await Promise.all([
+      const [cuentas, pagos, config, dispositivos] = await Promise.all([
         db.from("picada_cuentas").select("*").order("creado", { ascending: false }).limit(2000),
         db.from("picada_pagos").select("*").order("creado", { ascending: false }).limit(1000),
         db.from("picada_config").select("*").eq("id", 1).single(),
+        db.from("picada_dispositivos").select("*").order("ultimo", { ascending: false }).limit(5000),
       ]);
-      return json({ cuentas: cuentas.data ?? [], pagos: pagos.data ?? [], config: config.data });
+      return json({ cuentas: cuentas.data ?? [], pagos: pagos.data ?? [], config: config.data, dispositivos: dispositivos.data ?? [] });
     }
 
     if (b.accion === "cuenta") {
@@ -103,12 +105,20 @@ Deno.serve(async (req) => {
       return json({ pago: p });
     }
 
+    if (b.accion === "liberar_dispositivo") {
+      const { error } = await db.from("picada_dispositivos").delete().eq("user_id", b.user_id).eq("dispositivo", String(b.dispositivo ?? ""));
+      if (error) throw error;
+      const { data } = await db.from("picada_dispositivos").select("*").eq("user_id", b.user_id);
+      return json({ dispositivos: data ?? [] });
+    }
+
     if (b.accion === "config") {
       const c: Record<string, unknown> = { actualizado: new Date().toISOString() };
       if (b.dias_prueba != null) { const d = Math.round(Number(b.dias_prueba)); if (d >= 0 && d <= 90) c.dias_prueba = d; }
       if (b.trimestral_usd != null && Number(b.trimestral_usd) > 0) c.trimestral_usd = Number(b.trimestral_usd);
       if (b.anual_usd != null && Number(b.anual_usd) > 0) c.anual_usd = Number(b.anual_usd);
       if (b.tipo_dolar && TIPOS_DOLAR.includes(b.tipo_dolar)) c.tipo_dolar = b.tipo_dolar;
+      if (b.limite_dispositivos != null) { const n = Math.round(Number(b.limite_dispositivos)); if (n >= 1 && n <= 10) c.limite_dispositivos = n; }
       if (b.whatsapp != null) { const w = String(b.whatsapp).replace(/\D/g, ""); if (w.length >= 10 && w.length <= 15) c.whatsapp = w; }
       const { data, error } = await db.from("picada_config").update(c).eq("id", 1).select().single();
       if (error) throw error;

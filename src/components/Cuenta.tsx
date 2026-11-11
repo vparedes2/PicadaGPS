@@ -1,7 +1,7 @@
 /** Panel de la cuenta: estado del plan, renovar, pagos hechos, créditos, administración y salir. */
 import { useEffect, useState } from "react";
 import { X, LogOut, Shield, BookOpen } from "lucide-react";
-import { misPagos, salir, diaLargo, diasRestantes, pesos, type Acceso } from "../lib/cuenta";
+import { misPagos, salir, diaLargo, diasRestantes, pesos, diasSinSenalRestantes, DIAS_SIN_SENAL, type Acceso } from "../lib/cuenta";
 import { reiniciarDatos } from "../lib/datos";
 import Planes from "./Planes";
 import Creditos from "./Creditos";
@@ -35,6 +35,10 @@ export default function Cuenta({ a, onCerrar }: { a: Acceso; onCerrar: () => voi
           <p className="text-tenue">{a.email}</p>
           <p className="mt-2">{textoEstado(a)}</p>
           {a.estado !== "admin" && <p className="text-tenue">Acceso hasta el {diaLargo(a.hasta)}{quedan <= 7 && " · conviene renovar"}.</p>}
+          {a.estado !== "admin" && (
+            <p className="text-tenue mt-1">Sin señal podés usarla {Math.min(diasSinSenalRestantes(a), quedan)} días más; se renueva sola cada vez que abrís la app con conexión (máximo {DIAS_SIN_SENAL} días seguidos sin conectarte).
+              {a.limite_dispositivos ? ` Tu cuenta se puede usar en hasta ${a.limite_dispositivos} teléfonos.` : ""}</p>
+          )}
         </section>
 
         {a.estado !== "admin" && (

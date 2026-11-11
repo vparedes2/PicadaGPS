@@ -8,7 +8,8 @@ interface CuentaAdm {
   activo_hasta: string | null; plan: string | null; bloqueado: boolean; nota: string | null; ultimo_ingreso: string | null;
 }
 interface Pago { id: string; user_id: string; plan: string; meses: number; usd: number; ars: number; cotizacion: number; tipo_dolar: string; medio: string; estado: string; creado: string; mp_payment_id: string | null }
-interface Config { dias_prueba: number; trimestral_usd: number; anual_usd: number; tipo_dolar: string; whatsapp: string }
+interface Config { dias_prueba: number; trimestral_usd: number; anual_usd: number; tipo_dolar: string; whatsapp: string; limite_dispositivos: number }
+interface Disp { user_id: string; dispositivo: string; nombre: string | null; creado: string; ultimo: string }
 
 const ahora = () => Date.now();
 const estadoDe = (c: CuentaAdm) =>
@@ -22,7 +23,7 @@ const Boton = ({ children, onClick, peligro }: { children: React.ReactNode; onCl
   <button onClick={onClick} className={`px-2.5 py-1.5 rounded-md border text-[13px] ${peligro ? "border-alerta text-alerta" : "border-linea bg-fondo"}`}>{children}</button>
 );
 
-function FilaUsuario({ c, pagos, onCambio, onPago }: { c: CuentaAdm; pagos: Pago[]; onCambio: (c: CuentaAdm) => void; onPago: (p: Pago) => void }) {
+function FilaUsuario({ c, pagos, disps, onCambio, onPago, onDisps }: { c: CuentaAdm; pagos: Pago[]; disps: Disp[]; onCambio: (c: CuentaAdm) => void; onPago: (p: Pago) => void; onDisps: (user_id: string, quedan: Disp[]) => void }) {
   const [abierta, setAbierta] = useState(false);
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,9 +33,10 @@ function FilaUsuario({ c, pagos, onCambio, onPago }: { c: CuentaAdm; pagos: Pago
   const hacer = async (accion: string, datos: Record<string, unknown>) => {
     setOcupado(true); setError(null);
     try {
-      const r = await admin<{ cuenta?: CuentaAdm; pago?: Pago }>(accion, { user_id: c.user_id, ...datos });
+      const r = await admin<{ cuenta?: CuentaAdm; pago?: Pago; dispositivos?: Disp[] }>(accion, { user_id: c.user_id, ...datos });
       if (r.cuenta) { onCambio(r.cuenta); setFecha((r.cuenta.activo_hasta ?? "").slice(0, 10)); }
       if (r.pago) onPago(r.pago);
+      if (r.dispositivos) onDisps(c.user_id, r.dispositivos);
     }
     catch (x) { setError((x as Error).message); }
     setOcupado(false);
@@ -46,6 +48,7 @@ function FilaUsuario({ c, pagos, onCambio, onPago }: { c: CuentaAdm; pagos: Pago
   };
   const suyos = pagos.filter((p) => p.user_id === c.user_id);
   const pendiente = suyos.find((p) => p.estado === "solicitado");
+  const misDisps = disps.filter((x) => x.user_id === c.user_id);
 
   return (
     <li className="text-[14px]">
@@ -87,6 +90,19 @@ function FilaUsuario({ c, pagos, onCambio, onPago }: { c: CuentaAdm; pagos: Pago
               </label>
             </>
           )}
+          <div className="text-[13px]">
+            <span className="text-tenue">Teléfonos ({misDisps.length}):</span>
+            {misDisps.length ? (
+              <ul className="mt-1 flex flex-col gap-1">
+                {misDisps.map((x) => (
+                  <li key={x.dispositivo} className="flex items-center gap-2">
+                    <span className="flex-1">{x.nombre || "Teléfono"} · último uso {corta(x.ultimo)}</span>
+                    <Boton onClick={() => hacer("liberar_dispositivo", { dispositivo: x.dispositivo })}>Liberar</Boton>
+                  </li>
+                ))}
+              </ul>
+            ) : <span className="text-tenue"> ninguno todavía</span>}
+          </div>
           <label className="flex items-center gap-2 text-[13px]">Nota
             <input value={nota} onChange={(x) => setNota(x.target.value)} placeholder="empresa, teléfono…" className="flex-1 px-2 py-1 rounded-md border border-linea bg-fondo" />
             <Boton onClick={() => hacer("cuenta", { cambios: { nota } })}>Guardar</Boton>
@@ -122,6 +138,7 @@ function Precios({ config, onGuardado }: { config: Config; onGuardado: (c: Confi
       {campo("dias_prueba", "Días de prueba gratis")}
       {campo("trimestral_usd", "Plan trimestral (US$)")}
       {campo("anual_usd", "Plan anual (US$)")}
+      {campo("limite_dispositivos", "Teléfonos por cuenta")}
       <label className="flex items-center justify-between gap-3 text-[14px]">Dólar para pasar a pesos
         <select value={c.tipo_dolar} onChange={(e) => setC({ ...c, tipo_dolar: e.target.value })} className="px-2 py-1.5 rounded-md border border-linea bg-fondo">
           {Object.entries(NOMBRE_DOLAR).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -140,7 +157,7 @@ function Precios({ config, onGuardado }: { config: Config; onGuardado: (c: Confi
 }
 
 export default function Admin({ onCerrar }: { onCerrar: () => void }) {
-  const [d, setD] = useState<{ cuentas: CuentaAdm[]; pagos: Pago[]; config: Config } | null>(null);
+  const [d, setD] = useState<{ cuentas: CuentaAdm[]; pagos: Pago[]; config: Config; dispositivos: Disp[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pestana, setPestana] = useState<"usuarios" | "pagos" | "precios">("usuarios");
   const [q, setQ] = useState("");
@@ -170,6 +187,7 @@ export default function Admin({ onCerrar }: { onCerrar: () => void }) {
 
   const email = (id: string) => d?.cuentas.find((c) => c.user_id === id)?.email ?? id.slice(0, 8);
   const cambio = (nueva: CuentaAdm) => setD((x) => x && { ...x, cuentas: x.cuentas.map((c) => (c.user_id === nueva.user_id ? nueva : c)) });
+  const cambioDisps = (user_id: string, quedan: Disp[]) => setD((x) => x && { ...x, dispositivos: [...x.dispositivos.filter((y) => y.user_id !== user_id), ...quedan] });
   const cambioPago = (p: Pago) => setD((x) => x && { ...x, pagos: x.pagos.map((y) => (y.id === p.id ? p : y)) });
   const [ocupado, setOcupado] = useState<string | null>(null);
   const accionPago = async (accion: "confirmar_pago" | "rechazar_pago", p: Pago) => {
@@ -219,7 +237,7 @@ export default function Admin({ onCerrar }: { onCerrar: () => void }) {
                   </select>
                 </div>
                 <ul className="rounded-lg border border-linea bg-panel divide-y divide-linea">
-                  {lista.map((c) => <FilaUsuario key={c.user_id} c={c} pagos={d.pagos} onCambio={cambio} onPago={cambioPago} />)}
+                  {lista.map((c) => <FilaUsuario key={c.user_id} c={c} pagos={d.pagos} disps={d.dispositivos ?? []} onCambio={cambio} onPago={cambioPago} onDisps={cambioDisps} />)}
                   {!lista.length && <li className="p-3 text-[14px] text-tenue">Sin usuarios con ese filtro.</li>}
                 </ul>
               </>
