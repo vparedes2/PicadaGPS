@@ -1,4 +1,4 @@
-// PicadaGPS · administración. Solo responde a cuentas con rol admin en picada_cuentas.
+// PicadaGPS · administración. Solo responde a cuentas con rol admin en picada_cuentas (la función verifica la sesión).
 // Acciones (POST JSON):
 //   listar                                   → usuarios, pagos y configuración
 //   cuenta     {user_id, cambios}            → activo_hasta, prueba_hasta, bloqueado, nota, plan
@@ -21,6 +21,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   try {
     const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
+    if (!token) return json({ error: "Ingresá con tu cuenta." }, 401);
     const { data: ud } = await db.auth.getUser(token);
     if (!ud.user) return json({ error: "Ingresá con tu cuenta." }, 401);
     const { data: yo } = await db.from("picada_cuentas").select("rol").eq("user_id", ud.user.id).maybeSingle();
