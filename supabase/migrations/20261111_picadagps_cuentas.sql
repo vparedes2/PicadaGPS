@@ -39,7 +39,7 @@ create table public.picada_config (
   id int primary key default 1 check (id = 1),
   dias_prueba int not null default 7,
   trimestral_usd numeric not null default 20,
-  anual_usd numeric not null default 100,
+  anual_usd numeric not null default 70,
   tipo_dolar text not null default 'oficial',
   actualizado timestamptz not null default now()
 );

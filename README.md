@@ -52,7 +52,7 @@ Las coordenadas son las declaradas por las operadoras a los organismos públicos
 ## Cuentas, prueba y pagos
 
 - Ingreso con Google (Supabase Auth). La primera vez se crea la cuenta con 7 días de prueba; `vparedes2@gmail.com` queda como administrador.
-- Al vencer la prueba o el plan, la app pide pagar: trimestral US$ 20 o anual US$ 100, en pesos al dólar del día (dolarapi.com, oficial BNA venta por defecto; se cambia en Administración → Precios). El cobro es manual: el usuario toca «Pedir alias por WhatsApp», queda un pedido registrado y se abre WhatsApp con el plan, el monto y su cuenta. Paga por transferencia y el administrador confirma el pedido en Administración (eso habilita el plan).
+- Al vencer la prueba o el plan, la app pide pagar: trimestral US$ 20 o anual US$ 70, en pesos al dólar del día (dolarapi.com, oficial BNA venta por defecto; se cambia en Administración → Precios). El cobro es manual: el usuario toca «Pedir alias por WhatsApp», queda un pedido registrado y se abre WhatsApp con el plan, el monto y su cuenta. Paga por transferencia y el administrador confirma el pedido en Administración (eso habilita el plan).
 - Los datos están en `datos/` (no en `public/`): los entrega `api/datos.ts` solo con sesión y acceso vigente. La app los guarda en el teléfono para usarlos sin señal hasta la fecha de vencimiento; al salir o al vencer se borran.
 - Base de datos: `supabase/migrations/`. Funciones: `supabase/functions/picada-pagos` y `picada-admin` (ambas sin verificación JWT de la plataforma: cada una valida la sesión por su cuenta).
 - El número de WhatsApp se cambia en Administración → Precios.
