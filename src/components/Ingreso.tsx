@@ -1,6 +1,6 @@
 /** Pantalla de ingreso: demo de la app, 7 días gratis, precios de los planes y botón de Google. */
 import { useEffect, useState, type ReactNode } from "react";
-import { Search, Route, WifiOff, Navigation } from "lucide-react";
+import { Search, Route, WifiOff, Navigation, MessageCircle } from "lucide-react";
 import { ingresarConGoogle, consultarPrecios, pesos, type Precios } from "../lib/cuenta";
 import Creditos from "./Creditos";
 
@@ -54,6 +54,13 @@ export default function Ingreso({ aviso }: { aviso?: ReactNode }) {
 
   const tri = p?.planes.trimestral, anu = p?.planes.anual;
   const ahorro = tri && anu ? tri.usd * 4 - anu.usd : 0;
+  const consultar = (plan: "trimestral" | "anual") => {
+    const pl = plan === "anual" ? anu : tri;
+    const nombre = plan === "anual" ? "anual (12 meses)" : "trimestral (3 meses)";
+    const precio = pl ? ` (US$ ${pl.usd}, hoy ${pesos(pl.ars)})` : "";
+    const texto = `Hola Víctor, quiero consultar por el plan ${nombre} de PicadaGPS${precio}. ¿Cómo pago?`;
+    location.href = `https://wa.me/${p?.whatsapp || "5492994603071"}?text=${encodeURIComponent(texto)}`;
+  };
 
   return (
     <div className="min-h-full bg-fondo overflow-y-auto relative">
@@ -90,21 +97,24 @@ export default function Ingreso({ aviso }: { aviso?: ReactNode }) {
         <section>
           <h2 className="text-[13px] uppercase tracking-wide text-tenue font-semibold mb-1.5 text-center">Después de la prueba</h2>
           <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-xl border border-linea bg-panel p-3">
+            <button onClick={() => consultar("trimestral")} className="text-left rounded-xl border border-linea bg-panel p-3 active:scale-[.98] transition">
               <p className="text-[13px] font-semibold">Trimestral</p>
               <p className="num text-[20px] font-bold">US$ {tri?.usd ?? "…"}</p>
-              <p className="num text-[12px] text-tenue">{tri ? `${pesos(tri.ars)} hoy` : " "}</p>
+              <p className="num text-[12px] text-tenue">{tri ? `${pesos(tri.ars)} hoy` : "\u00a0"}</p>
               <p className="text-[12px] text-tenue">3 meses</p>
-            </div>
-            <div className="rounded-xl border border-acento bg-panel p-3 relative">
+              <p className="mt-1.5 flex items-center gap-1 text-[12px] font-semibold text-acento"><MessageCircle className="w-3.5 h-3.5" /> Consultar</p>
+            </button>
+            <button onClick={() => consultar("anual")} className="text-left rounded-xl border border-acento bg-panel p-3 relative active:scale-[.98] transition">
               {ahorro > 0 && <span className="absolute -top-2.5 right-2 px-1.5 py-0.5 rounded-md bg-acento text-acento-texto text-[11px] font-semibold">Ahorrás US$ {ahorro}</span>}
               <p className="text-[13px] font-semibold">Anual</p>
               <p className="num text-[20px] font-bold">US$ {anu?.usd ?? "…"}</p>
-              <p className="num text-[12px] text-tenue">{anu ? `${pesos(anu.ars)} hoy` : " "}</p>
+              <p className="num text-[12px] text-tenue">{anu ? `${pesos(anu.ars)} hoy` : "\u00a0"}</p>
               <p className="text-[12px] text-tenue">12 meses</p>
-            </div>
+              <p className="mt-1.5 flex items-center gap-1 text-[12px] font-semibold text-acento"><MessageCircle className="w-3.5 h-3.5" /> Consultar</p>
+            </button>
           </div>
-          <p className="text-[12px] text-tenue text-center mt-1.5">Pesos al dólar oficial del día. Pago único por transferencia, sin renovación automática.</p>
+          <p className="text-[12px] text-tenue text-center mt-1.5">Pesos al dólar oficial del día. Pago único por transferencia, sin renovación automática.
+            Tocá un plan para consultarlo por WhatsApp; al terminar la prueba también lo pedís desde la app.</p>
         </section>
 
         <ul className="flex flex-col gap-2 text-[14px]">
