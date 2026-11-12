@@ -3,7 +3,9 @@ import { Copy, Check, Star, Share2, Navigation, MapPin, Crosshair, Download, X, 
 import type { Linea, Marca } from "./Mapa";
 import { esPozo, nombreDe, type Datos, type Instalacion, type Pozo } from "../lib/datos";
 import { aDMS, cardinal, distM, rumbo, rutaMasCercana, textoDist } from "../lib/geo";
-import { copiar, enlaceGoogle, enlaceOtraApp, enlaceWaze, enlaceWhatsApp, guardarZona, nombreOtraApp } from "../lib/navegar";
+import { copiar, enlaceGoogle, enlaceOtraApp, enlaceWaze, guardarZona, nombreOtraApp } from "../lib/navegar";
+import { compartirUbicacion, enlaceApp, enlaceSatelite } from "../lib/compartir";
+import { capturarSatelite } from "./Mapa";
 
 interface Props {
   x: Pozo | Instalacion;
@@ -83,6 +85,34 @@ export default function Ficha({ x, datos, favorito, onFavorito, onCerrar, onEleg
   const desdeYo = yo ? { d: distM(yo.lat, yo.lon, lat, lon), r: rumbo(yo.lat, yo.lon, lat, lon) } : null;
   const dec = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
   const dms = `${aDMS(lat, true)}, ${aDMS(lon, false)}`;
+  const [compartiendo, setCompartiendo] = useState(false);
+
+  /** Texto para WhatsApp: qué es, coordenadas, cómo llegar y enlaces (satélite, Waze, la app) */
+  const textoCompartir = () => {
+    const l: string[] = [];
+    l.push(`📍 *${nombre}*`);
+    l.push(esPozo(x) ? `Pozo ${x.tipo.toLowerCase()} · ${x.area} · ${x.empresa}` : `${x.tipo || "Instalación"} · ${x.area}${x.operador ? ` · ${x.operador}` : ""}`);
+    l.push(`Coordenadas: ${dec}`);
+    l.push(`GPS: ${dms}`);
+    l.push("");
+    l.push("*Cómo llegar*");
+    if (ref.ruta) l.push(`🛣️ A ${textoDist(ref.ruta.d)} al ${cardinal(rumbo(ref.ruta.lat, ref.ruta.lon, lat, lon))} de ${ref.ruta.nombre} (salida: ${ref.ruta.lat.toFixed(6)}, ${ref.ruta.lon.toFixed(6)})`);
+    if (ref.camino) l.push(`🚙 Camino de yacimiento a ${textoDist(ref.camino.d)}`);
+    for (const r of ref.inst.slice(0, 2)) l.push(`🏭 A ${textoDist(r.d)} al ${cardinal(rumbo(r.i.lat, r.i.lon, lat, lon))} de ${nombreDe(r.i)}`);
+    if (ref.vecinos.length) l.push(`🛢️ En la misma locación: ${ref.vecinos.slice(0, 4).map((v) => nombreDe(v).replace(/^[^.]+\.Nq\./, "")).join(", ")}${ref.vecinos.length > 4 ? "…" : ""}`);
+    l.push("");
+    l.push(`🛰️ Satélite: ${enlaceSatelite(lat, lon)}`);
+    l.push(`🚗 Waze: ${enlaceWaze(lat, lon)}`);
+    l.push(`📲 Ver en PicadaGPS: ${enlaceApp(x.k)}`);
+    l.push("");
+    l.push("_Ubicá cualquier pozo de Neuquén sin señal con *PicadaGPS.ar* · 7 días gratis_");
+    return l.join("\n");
+  };
+  const compartir = async (conFoto: boolean) => {
+    setCompartiendo(true);
+    try { await compartirUbicacion(textoCompartir(), conFoto && capturarSatelite ? () => capturarSatelite!(lat, lon, nombre) : null, nombre); }
+    finally { setCompartiendo(false); }
+  };
 
   return (
     <article className="flex flex-col gap-4 pb-6">
@@ -123,10 +153,14 @@ export default function Ficha({ x, datos, favorito, onFavorito, onCerrar, onEleg
       <section className="flex flex-col gap-2" aria-label="Coordenadas">
         <BotonCopiar etiqueta="Coordenadas (decimal) · tocar para copiar" texto={dec} />
         <BotonCopiar etiqueta="Grados, minutos y segundos (GPS de la camioneta)" texto={dms} />
-        <a href={enlaceWhatsApp(nombre, lat, lon, ref.ruta ? `Salida de ${ref.ruta.nombre}: ${ref.ruta.lat.toFixed(6)}, ${ref.ruta.lon.toFixed(6)}` : "")}
-          target="_blank" rel="noopener" className="flex items-center justify-center gap-2 py-2.5 rounded-lg border border-linea bg-panel text-[15px] font-medium">
-          <Share2 className="w-5 h-5" /> Enviar ubicación por WhatsApp
-        </a>
+        <button onClick={() => compartir(true)} disabled={compartiendo}
+          className="flex items-center justify-center gap-2 py-2.5 rounded-lg bg-[#1f8f4e] text-white text-[15px] font-semibold disabled:opacity-60">
+          <Share2 className="w-5 h-5" /> {compartiendo ? "Preparando foto satelital…" : "Compartir ubicación por WhatsApp"}
+        </button>
+        <p className="text-[12px] text-tenue -mt-1 leading-snug">
+          Manda la foto satelital, las coordenadas, la salida de la ruta, las instalaciones cercanas y los enlaces a Waze y al mapa.{" "}
+          <button onClick={() => compartir(false)} className="underline">Enviar solo texto</button>
+        </p>
       </section>
 
       <section aria-label="Cómo llegar" className="flex flex-col gap-2">

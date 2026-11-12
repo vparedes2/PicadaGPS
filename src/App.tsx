@@ -130,6 +130,16 @@ export default function App({ acceso }: { acceso: Acceso }) {
   const [linea, setLinea] = useState<Linea | null>(null);
   useEffect(() => { setLinea(salida ? { desde: { lat: salida.lat, lon: salida.lon }, tipo: "ruta", n: 0 } : null); }, [salida]);
 
+  // Enlace compartido (?p=clave): abre ese pozo apenas están los datos. Se guarda por si antes tiene que entrar con Google.
+  useEffect(() => {
+    if (!datos) return;
+    let k: string | null = null;
+    try { k = new URLSearchParams(location.search).get("p") || localStorage.getItem("picadagps.abrir"); localStorage.removeItem("picadagps.abrir"); } catch { /* nada */ }
+    if (new URLSearchParams(location.search).has("p")) history.replaceState(null, "", location.pathname);
+    if (k && datos.porClave.has(k)) elegir(k);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [datos]);
+
   const elegir = (k: string, volar = true) => {
     if (!datos) return;
     const y = datos.porClave.get(k);

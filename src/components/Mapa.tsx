@@ -17,6 +17,63 @@ interface Props {
 
 const vacio: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 
+/**
+ * Foto satelital del punto para compartir: centra el mapa, prende el satélite, espera las imágenes
+ * y devuelve un JPG con el pin, el nombre, las coordenadas y la marca de la app. Después deja el mapa como estaba.
+ */
+export let capturarSatelite: ((lat: number, lon: number, nombre: string) => Promise<Blob | null>) | null = null;
+
+function esperar(m: MLMap, ev: "idle" | "render", ms: number) {
+  return new Promise<void>((ok) => { const t = setTimeout(ok, ms); m.once(ev, () => { clearTimeout(t); ok(); }); });
+}
+
+async function fotoSatelite(m: MLMap, lat: number, lon: number, nombre: string): Promise<Blob | null> {
+  const antes = { center: m.getCenter(), zoom: m.getZoom(), bearing: m.getBearing(), pitch: m.getPitch(), sat: m.getLayoutProperty("sat", "visibility") };
+  try {
+    m.setLayoutProperty("sat", "visibility", "visible");
+    m.jumpTo({ center: [lon, lat], zoom: 16.2, bearing: 0, pitch: 0 });
+    await esperar(m, "idle", 7000);
+    // El lienzo de WebGL solo se puede leer justo después de dibujar
+    const lienzo = await new Promise<HTMLCanvasElement | null>((ok) => {
+      const t = setTimeout(() => ok(null), 3000);
+      m.once("render", () => {
+        clearTimeout(t);
+        const src = m.getCanvas();
+        const c = document.createElement("canvas"); c.width = src.width; c.height = src.height;
+        c.getContext("2d")!.drawImage(src, 0, 0); ok(c);
+      });
+      m.triggerRepaint();
+    });
+    if (!lienzo) return null;
+    const dpr = lienzo.width / m.getCanvas().clientWidth;
+    const W = lienzo.width, barra = Math.round(78 * dpr);
+    const out = document.createElement("canvas"); out.width = W; out.height = lienzo.height + barra;
+    const g = out.getContext("2d")!;
+    g.drawImage(lienzo, 0, 0);
+    // Pin en el punto
+    const pt = m.project([lon, lat]); const x = pt.x * dpr, y = pt.y * dpr, r = 11 * dpr;
+    g.fillStyle = "rgba(194,65,12,.25)"; g.beginPath(); g.arc(x, y, r * 2.2, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "#c2410c"; g.strokeStyle = "#fff"; g.lineWidth = 3 * dpr; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); g.stroke();
+    // Atribución de la imagen (la exige Esri)
+    g.font = `${10 * dpr}px system-ui, sans-serif`; g.fillStyle = "rgba(255,255,255,.85)"; g.textAlign = "right";
+    g.fillText("Imagen © Esri, Maxar", W - 6 * dpr, lienzo.height - 6 * dpr);
+    // Barra inferior con nombre, coordenadas y marca
+    g.fillStyle = "#1f3a2e"; g.fillRect(0, lienzo.height, W, barra);
+    g.textAlign = "left"; g.fillStyle = "#fff"; g.font = `600 ${17 * dpr}px system-ui, sans-serif`;
+    g.fillText(nombre.length > 34 ? nombre.slice(0, 33) + "…" : nombre, 12 * dpr, lienzo.height + 28 * dpr);
+    g.font = `${13 * dpr}px ui-monospace, monospace`; g.fillStyle = "#d9e7df";
+    g.fillText(`${lat.toFixed(6)}, ${lon.toFixed(6)}`, 12 * dpr, lienzo.height + 50 * dpr);
+    g.font = `600 ${13 * dpr}px system-ui, sans-serif`; g.fillStyle = "#9fd8b8";
+    g.fillText("PicadaGPS.ar · 7 días gratis", 12 * dpr, lienzo.height + 69 * dpr);
+    return await new Promise<Blob | null>((ok) => out.toBlob((b) => ok(b), "image/jpeg", 0.86));
+  } catch {
+    return null;
+  } finally {
+    m.setLayoutProperty("sat", "visibility", antes.sat ?? "none");
+    m.jumpTo({ center: antes.center, zoom: antes.zoom, bearing: antes.bearing, pitch: antes.pitch });
+  }
+}
+
 /** "RINCON DEL MANGRULLO" → "Rincón del Mangrullo" (sin tildes, pero legible) */
 const titulo = (s: string) => s.toLowerCase().replace(/(^|\s)(\S)/g, (_, a, b) => a + b.toUpperCase()).replace(/ (De|Del|La|Las|Los|El|Y) /g, (m) => m.toLowerCase())
   .replace(/\b(Ii|Iii|Iv|Vi|Vii)\b/g, (m) => m.toUpperCase());
@@ -190,7 +247,9 @@ export default function Mapa({ datos, seleccion, linea, yo, satelite, onElegir, 
     m.on("load", refrescar);
     m.on("moveend", refrescar);
     mapa.current = m;
+    capturarSatelite = (lat, lon, nombre) => fotoSatelite(m, lat, lon, nombre);
     return () => {
+      capturarSatelite = null;
       for (const mk of [...textos.current.areas, ...textos.current.puntos]) mk.remove();
       textos.current = { areas: [], puntos: [] };
       m.remove(); mapa.current = null; listo.current = false;
