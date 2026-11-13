@@ -81,7 +81,7 @@ export default function Ingreso({ aviso }: { aviso?: ReactNode }) {
         </div>
 
         {/* Demo: búsqueda de un pozo y el mapa que vuela hasta la locación */}
-        <div className="relative mx-auto w-[210px] rounded-[24px] border-[5px] border-[#1c1a17] bg-[#1c1a17] shadow-xl overflow-hidden">
+        <div className="relative mx-auto w-[185px] rounded-[22px] border-[5px] border-[#1c1a17] bg-[#1c1a17] shadow-xl overflow-hidden">
           <video
             className="block w-full aspect-[390/780] bg-[#ddd5c3]"
             poster="/demo/poster.jpg"
@@ -92,6 +92,12 @@ export default function Ingreso({ aviso }: { aviso?: ReactNode }) {
             <source src="/demo/picadagps-demo.mp4" type="video/mp4" />
           </video>
         </div>
+
+        <ul className="flex flex-col gap-2 text-[14px] px-1">
+          {VENTAJAS.map(({ i: I, t }) => (
+            <li key={t} className="flex items-center gap-2.5"><I className="w-4 h-4 text-acento shrink-0" /> {t}</li>
+          ))}
+        </ul>
 
         <div className="rounded-xl border-2 border-acento bg-panel p-3 text-center">
           <p className="text-[20px] font-bold text-acento">7 días gratis</p>
@@ -134,11 +140,6 @@ export default function Ingreso({ aviso }: { aviso?: ReactNode }) {
             Tocá un plan para consultarlo por WhatsApp; al terminar la prueba también lo pedís desde la app.</p>
         </section>
 
-        <ul className="flex flex-col gap-2 text-[14px]">
-          {VENTAJAS.map(({ i: I, t }) => (
-            <li key={t} className="flex items-center gap-2.5"><I className="w-4 h-4 text-acento shrink-0" /> {t}</li>
-          ))}
-        </ul>
 
         <button onClick={compartirWhatsApp} className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-linea bg-panel text-[15px] font-semibold">
           <Share2 className="w-4 h-4 text-acento" /> Compartir por WhatsApp
