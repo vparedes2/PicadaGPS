@@ -8,8 +8,9 @@ import { buscarPorPartes, buscarAreas } from "./lib/buscar";
 import { rutaMasCercana } from "./lib/geo";
 import type { Linea } from "./components/Mapa";
 import { useLista } from "./lib/guardado";
-import type { Acceso } from "./lib/cuenta";
+import { diasRestantes, type Acceso } from "./lib/cuenta";
 import Cuenta, { textoEstado } from "./components/Cuenta";
+import AvisoVence from "./components/AvisoVence";
 
 function useEnLinea() {
   const [en, setEn] = useState(navigator.onLine);
@@ -175,11 +176,12 @@ export default function App({ acceso }: { acceso: Acceso }) {
               <button onClick={compartirWhatsApp} aria-label="Compartir la app por WhatsApp" title="Compartir por WhatsApp" className="p-1.5 rounded-md border border-linea text-acento">
                 <Share2 className="w-4 h-4" />
               </button>
-              <button onClick={() => abrirCuenta(true)} className={`flex items-center gap-1 px-2 py-1 rounded-md border text-[12px] ${acceso.estado === "prueba" ? "border-acento text-acento" : "border-linea text-tenue"}`}>
+              <button onClick={() => abrirCuenta(true)} className={`flex items-center gap-1 px-2 py-1 rounded-md border text-[12px] ${(acceso.estado === "prueba" || acceso.estado === "activo") && diasRestantes(acceso.hasta) <= 2 ? "border-[#e0a100] text-[#b37a00] font-semibold" : acceso.estado === "prueba" ? "border-acento text-acento" : "border-linea text-tenue"}`}>
                 <UserRound className="w-4 h-4" /> {textoEstado(acceso)}
               </button>
             </span>
           </div>
+          <AvisoVence a={acceso} onPlanes={() => abrirCuenta(true)} />
           <label className="relative block">
             <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-tenue" />
             <input

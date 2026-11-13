@@ -156,10 +156,86 @@ function Precios({ config, onGuardado }: { config: Config; onGuardado: (c: Confi
   );
 }
 
+type Est = {
+  nuevosHoy: number; nuevos7: number; nuevos30: number; activos24: number; activos7: number;
+  porDia: { dia: Date; n: number }[]; ultimoIngreso: { k: string; n: number }[]; vencenPronto: CuentaAdm[]; fin: (c: CuentaAdm) => number;
+  conversion: number | null; pagaron: number; terminaron: number; sinPagar: number; ticket: number; telefonos: number; usuarios: number;
+};
+
+function Barras({ datos, etiqueta }: { datos: { k: string; n: number }[]; etiqueta?: (i: number) => boolean }) {
+  const max = Math.max(1, ...datos.map((x) => x.n));
+  return (
+    <div className="flex items-end gap-1 h-36 pt-4">
+      {datos.map((x, i) => (
+        <div key={x.k + i} className="flex-1 min-w-0 flex flex-col items-center justify-end h-full gap-1">
+          <span className="num text-[11px] text-tenue">{x.n || ""}</span>
+          <div className="w-full rounded-t bg-acento" style={{ height: `${(x.n / max) * 100}%`, minHeight: x.n ? 3 : 1, opacity: x.n ? 1 : 0.25 }} />
+          <span className="text-[10px] text-tenue truncate w-full text-center">{!etiqueta || etiqueta(i) ? x.k : "\u00a0"}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Estadisticas({ e, alVer }: { e: Est; alVer: (filtro: string) => void }) {
+  const tarjeta = (k: string, v: string | number, sub?: string) => (
+    <div key={k} className="rounded-lg border border-linea bg-panel p-2.5">
+      <span className="block text-[12px] text-tenue">{k}</span>
+      <span className="block num text-[18px] font-semibold">{v}</span>
+      {sub && <span className="block text-[11px] text-tenue">{sub}</span>}
+    </div>
+  );
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        {tarjeta("Nuevos hoy", e.nuevosHoy)}
+        {tarjeta("Nuevos 7 días", e.nuevos7)}
+        {tarjeta("Nuevos 30 días", e.nuevos30)}
+        {tarjeta("Activos últimas 24 h", e.activos24, `de ${e.usuarios} usuarios`)}
+        {tarjeta("Activos 7 días", e.activos7)}
+        {tarjeta("Conversión", e.conversion == null ? "—" : `${e.conversion} %`, e.terminaron ? `${e.pagaron} ${e.pagaron === 1 ? "pagó" : "pagaron"} · ${e.sinPagar} ${e.sinPagar === 1 ? "venció" : "vencieron"} sin pagar` : "todavía no terminó ninguna prueba")}
+        {tarjeta("Pago promedio", e.ticket ? pesos(Math.round(e.ticket)) : "—")}
+        {tarjeta("Celulares en uso", e.telefonos, "dispositivos con la app")}
+        {tarjeta("Vencen en 2 días", e.vencenPronto.length)}
+      </div>
+
+      <section className="rounded-lg border border-linea bg-panel p-3">
+        <h3 className="text-[14px] font-semibold">Usuarios nuevos por día</h3>
+        <p className="text-[12px] text-tenue">Últimos 14 días</p>
+        <Barras datos={e.porDia.map((x) => ({ k: x.dia.toLocaleDateString("es-AR", { day: "numeric", month: "numeric" }), n: x.n }))} etiqueta={(i) => i % 2 === 1 || i === 13} />
+      </section>
+
+      <section className="rounded-lg border border-linea bg-panel p-3">
+        <h3 className="text-[14px] font-semibold">Último ingreso</h3>
+        <p className="text-[12px] text-tenue">Hace cuánto abrió la app cada usuario</p>
+        <Barras datos={e.ultimoIngreso} />
+      </section>
+
+      <section className="rounded-lg border border-linea bg-panel p-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-[14px] font-semibold">Vencen en los próximos 2 días</h3>
+          {e.vencenPronto.length > 0 && <button onClick={() => alVer("vencen pronto")} className="text-[13px] underline">Ver en usuarios</button>}
+        </div>
+        {e.vencenPronto.length ? (
+          <ul className="mt-1 divide-y divide-linea text-[13px]">
+            {e.vencenPronto.slice(0, 15).map((c) => (
+              <li key={c.user_id} className="py-1.5 flex justify-between gap-2">
+                <span className="truncate">{c.nombre || c.email}</span>
+                <span className="num text-tenue shrink-0">{new Date(e.fin(c)).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>
+              </li>
+            ))}
+          </ul>
+        ) : <p className="text-[13px] text-tenue mt-1">Nadie por ahora.</p>}
+        <p className="text-[12px] text-tenue mt-2">A ellos la app ya les muestra el aviso de vencimiento.</p>
+      </section>
+    </div>
+  );
+}
+
 export default function Admin({ onCerrar }: { onCerrar: () => void }) {
   const [d, setD] = useState<{ cuentas: CuentaAdm[]; pagos: Pago[]; config: Config; dispositivos: Disp[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [pestana, setPestana] = useState<"usuarios" | "pagos" | "precios">("usuarios");
+  const [pestana, setPestana] = useState<"estadísticas" | "usuarios" | "pagos" | "precios">("estadísticas");
   const [q, setQ] = useState("");
   const [filtro, setFiltro] = useState("todos");
   const cargar = () => { setError(null); admin("listar").then(setD).catch((e) => setError(e.message)); };
@@ -179,11 +255,44 @@ export default function Admin({ onCerrar }: { onCerrar: () => void }) {
     };
   }, [d]);
 
+  // Estadísticas de uso: altas por día, actividad, vencimientos próximos y conversión
+  const est = useMemo(() => {
+    if (!d) return null;
+    const DIA = 86400000, ahora = Date.now();
+    const inicioDia = (t: number) => { const x = new Date(t); x.setHours(0, 0, 0, 0); return +x; };
+    const hoy0 = inicioDia(ahora);
+    const usuarios = d.cuentas.filter((c) => c.rol !== "admin");
+    const nuevos = (dias: number) => usuarios.filter((c) => Date.parse(c.creado) >= hoy0 - (dias - 1) * DIA).length;
+    const activos = (h: number) => usuarios.filter((c) => c.ultimo_ingreso && ahora - Date.parse(c.ultimo_ingreso) < h * 3600000).length;
+    const porDia = Array.from({ length: 14 }, (_, i) => {
+      const desde = hoy0 - (13 - i) * DIA;
+      return { dia: new Date(desde), n: usuarios.filter((c) => { const t = Date.parse(c.creado); return t >= desde && t < desde + DIA; }).length };
+    });
+    const tramos = [["Hoy", 0, 1], ["1 a 3 días", 1, 4], ["4 a 7 días", 4, 8], ["Más de 7 días", 8, 99999]] as const;
+    const ultimoIngreso = tramos.map(([k, a, b]) => ({ k, n: usuarios.filter((c) => { const dd = c.ultimo_ingreso ? Math.floor((hoy0 + DIA - Date.parse(c.ultimo_ingreso)) / DIA) : 99999; return dd >= a && dd < b; }).length }));
+    const fin = (c: CuentaAdm) => (c.activo_hasta && Date.parse(c.activo_hasta) > ahora ? Date.parse(c.activo_hasta) : Date.parse(c.prueba_hasta));
+    const vencenPronto = usuarios.filter((c) => !c.bloqueado && fin(c) > ahora && fin(c) - ahora <= 2 * DIA).sort((a, b) => fin(a) - fin(b));
+    const pagaron = new Set(d.pagos.filter((p) => p.estado === "aprobado").map((p) => p.user_id));
+    // Decidieron: pagaron (en cualquier momento) o se les terminó la prueba sin pagar
+    const sinPagar = usuarios.filter((c) => Date.parse(c.prueba_hasta) <= ahora && !pagaron.has(c.user_id)).length;
+    const terminaron = { length: pagaron.size + sinPagar };
+    const aprobados = d.pagos.filter((p) => p.estado === "aprobado" && Number(p.ars) > 0);
+    return {
+      nuevosHoy: nuevos(1), nuevos7: nuevos(7), nuevos30: nuevos(30), activos24: activos(24), activos7: activos(24 * 7),
+      porDia, ultimoIngreso, vencenPronto, fin,
+      conversion: terminaron.length ? Math.round((pagaron.size / terminaron.length) * 100) : null,
+      pagaron: pagaron.size, terminaron: terminaron.length, sinPagar,
+      ticket: aprobados.length ? aprobados.reduce((x, p) => x + Number(p.ars), 0) / aprobados.length : 0,
+      telefonos: d.dispositivos.length, usuarios: usuarios.length
+    };
+  }, [d]);
+
   const lista = useMemo(() => {
     if (!d) return [];
     const t = q.trim().toLowerCase();
-    return d.cuentas.filter((c) => (filtro === "todos" || estadoDe(c) === filtro) && (!t || `${c.email} ${c.nombre ?? ""} ${c.nota ?? ""}`.toLowerCase().includes(t)));
-  }, [d, q, filtro]);
+    const pronto = new Set(est?.vencenPronto.map((c) => c.user_id) ?? []);
+    return d.cuentas.filter((c) => (filtro === "todos" || (filtro === "vencen pronto" ? pronto.has(c.user_id) : estadoDe(c) === filtro)) && (!t || `${c.email} ${c.nombre ?? ""} ${c.nota ?? ""}`.toLowerCase().includes(t)));
+  }, [d, q, filtro, est]);
 
   const email = (id: string) => d?.cuentas.find((c) => c.user_id === id)?.email ?? id.slice(0, 8);
   const cambio = (nueva: CuentaAdm) => setD((x) => x && { ...x, cuentas: x.cuentas.map((c) => (c.user_id === nueva.user_id ? nueva : c)) });
@@ -221,10 +330,11 @@ export default function Admin({ onCerrar }: { onCerrar: () => void }) {
               ))}
             </div>
             <div className="flex gap-1 border-b border-linea">
-              {(["usuarios", "pagos", "precios"] as const).map((p) => (
+              {(["estadísticas", "usuarios", "pagos", "precios"] as const).map((p) => (
                 <button key={p} onClick={() => setPestana(p)} className={`px-3 py-2 text-[14px] capitalize ${pestana === p ? "border-b-2 border-acento font-semibold" : "text-tenue"}`}>{p}</button>
               ))}
             </div>
+            {pestana === "estadísticas" && est && <Estadisticas e={est} alVer={(f) => { setFiltro(f); setPestana("usuarios"); }} />}
             {pestana === "usuarios" && (
               <>
                 <div className="flex gap-2">
@@ -233,7 +343,7 @@ export default function Admin({ onCerrar }: { onCerrar: () => void }) {
                     <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por mail, nombre o nota" className="w-full pl-8 pr-2 py-2 rounded-lg border border-linea bg-panel text-[14px]" />
                   </label>
                   <select value={filtro} onChange={(e) => setFiltro(e.target.value)} className="px-2 rounded-lg border border-linea bg-panel text-[14px]">
-                    {["todos", "prueba", "activo", "vencido", "bloqueado", "admin"].map((f) => <option key={f}>{f}</option>)}
+                    {["todos", "vencen pronto", "prueba", "activo", "vencido", "bloqueado", "admin"].map((f) => <option key={f}>{f}</option>)}
                   </select>
                 </div>
                 <ul className="rounded-lg border border-linea bg-panel divide-y divide-linea">

@@ -9,7 +9,7 @@ import Admin from "./Admin";
 
 export const textoEstado = (a: Acceso) =>
   a.estado === "admin" ? "Administrador"
-  : a.estado === "prueba" ? `Prueba gratis · ${diasRestantes(a.hasta)} ${diasRestantes(a.hasta) === 1 ? "día" : "días"}`
+  : a.estado === "prueba" ? (diasRestantes(a.hasta) <= 1 ? "Prueba gratis · último día" : `Prueba gratis · ${diasRestantes(a.hasta)} días`)
   : a.estado === "activo" ? `Plan ${a.plan ?? ""} · hasta ${new Date(a.hasta!).toLocaleDateString("es-AR")}`
   : "Sin acceso";
 
