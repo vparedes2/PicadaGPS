@@ -111,7 +111,7 @@ export default function Ingreso({ aviso }: { aviso?: ReactNode }) {
           </svg>
         </div>
 
-        <section className="mt-10">
+        <section className="mt-28 pt-6 border-t border-linea">
           <h2 className="text-[13px] uppercase tracking-wide text-tenue font-semibold mb-1.5 text-center">Después de la prueba</h2>
           <div className="grid grid-cols-2 gap-2">
             <button onClick={() => consultar("trimestral")} className="text-left rounded-xl border border-linea bg-panel p-3 active:scale-[.98] transition">
