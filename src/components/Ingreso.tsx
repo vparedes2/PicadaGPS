@@ -56,11 +56,12 @@ export default function Ingreso({ aviso }: { aviso?: ReactNode }) {
   }, []);
 
   const tri = p?.planes?.trimestral, anu = p?.planes?.anual;
-  const ahorro = tri && anu ? tri.usd * 4 - anu.usd : 0;
+  // Ahorro del anual frente a 4 trimestres, en pesos
+  const ahorro = tri && anu ? tri.ars * 4 - anu.ars : 0;
   const consultar = (plan: "trimestral" | "anual") => {
     const pl = plan === "anual" ? anu : tri;
     const nombre = plan === "anual" ? "anual (12 meses)" : "trimestral (3 meses)";
-    const precio = pl ? ` (US$ ${pl.usd}, hoy ${pesos(pl.ars)})` : "";
+    const precio = pl ? ` (hoy ${pesos(pl.ars)})` : "";
     const texto = `Hola Víctor, quiero consultar por el plan ${nombre} de PicadaGPS${precio}. ¿Cómo pago?`;
     location.href = `https://wa.me/${p?.whatsapp || "5492994603071"}?text=${encodeURIComponent(texto)}`;
   };
@@ -122,21 +123,19 @@ export default function Ingreso({ aviso }: { aviso?: ReactNode }) {
           <div className="grid grid-cols-2 gap-2">
             <button onClick={() => consultar("trimestral")} className="text-left rounded-xl border border-linea bg-panel p-3 active:scale-[.98] transition">
               <p className="text-[13px] font-semibold">Trimestral</p>
-              <p className="num text-[20px] font-bold">US$ {tri?.usd ?? 20}</p>
-              <p className="num text-[12px] text-tenue">{tri ? `${pesos(tri.ars)} hoy` : "\u00a0"}</p>
+              <p className="num text-[20px] font-bold">{tri ? pesos(tri.ars) : "Consultar"}</p>
               <p className="text-[12px] text-tenue">3 meses</p>
               <p className="mt-1.5 flex items-center gap-1 text-[12px] font-semibold text-acento"><MessageCircle className="w-3.5 h-3.5" /> Consultar</p>
             </button>
             <button onClick={() => consultar("anual")} className="text-left rounded-xl border border-acento bg-panel p-3 relative active:scale-[.98] transition">
-              {ahorro > 0 && <span className="absolute -top-2.5 right-2 px-1.5 py-0.5 rounded-md bg-acento text-acento-texto text-[11px] font-semibold">Ahorrás US$ {ahorro}</span>}
+              {ahorro > 0 && <span className="absolute -top-2.5 right-2 px-1.5 py-0.5 rounded-md bg-acento text-acento-texto text-[11px] font-semibold">Ahorrás {pesos(ahorro)}</span>}
               <p className="text-[13px] font-semibold">Anual</p>
-              <p className="num text-[20px] font-bold">US$ {anu?.usd ?? 70}</p>
-              <p className="num text-[12px] text-tenue">{anu ? `${pesos(anu.ars)} hoy` : "\u00a0"}</p>
+              <p className="num text-[20px] font-bold">{anu ? pesos(anu.ars) : "Consultar"}</p>
               <p className="text-[12px] text-tenue">12 meses</p>
               <p className="mt-1.5 flex items-center gap-1 text-[12px] font-semibold text-acento"><MessageCircle className="w-3.5 h-3.5" /> Consultar</p>
             </button>
           </div>
-          <p className="text-[12px] text-tenue text-center mt-1.5">Pesos al dólar oficial del día. Pago único por transferencia, sin renovación automática.
+          <p className="text-[12px] text-tenue text-center mt-1.5">Precio del día. Pago único por transferencia, sin renovación automática.
             Tocá un plan para consultarlo por WhatsApp; al terminar la prueba también lo pedís desde la app.</p>
         </section>
 

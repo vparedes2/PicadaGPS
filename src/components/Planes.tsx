@@ -1,10 +1,10 @@
 /**
- * Planes con precio en dólares y su equivalente en pesos al dólar del día.
+ * Planes en pesos (se calculan con el dólar del día, pero al usuario solo se le muestran pesos).
  * El pago es por transferencia: el usuario pide el alias por WhatsApp y el administrador confirma el pago.
  */
 import { useEffect, useState } from "react";
 import { MessageCircle } from "lucide-react";
-import { consultarPrecios, solicitarPlan, pesos, NOMBRE_DOLAR, type Precios } from "../lib/cuenta";
+import { consultarPrecios, solicitarPlan, pesos, type Precios } from "../lib/cuenta";
 
 export default function Planes({ email, onRevisar }: { email?: string; onRevisar?: () => void }) {
   const [p, setP] = useState<Precios | null>(null);
@@ -20,7 +20,7 @@ export default function Planes({ email, onRevisar }: { email?: string; onRevisar
     try {
       const r = await solicitarPlan(plan);
       const nombre = plan === "anual" ? "anual (12 meses)" : "trimestral (3 meses)";
-      const texto = `Hola Víctor, quiero el plan ${nombre} de PicadaGPS: US$ ${r.pago.usd} = ${pesos(Number(r.pago.ars))} al dólar ${NOMBRE_DOLAR[p.dolar.tipo] ?? p.dolar.tipo} de hoy. Mi cuenta: ${email ?? ""}. ¿Me pasás el alias para transferir?`;
+      const texto = `Hola Víctor, quiero el plan ${nombre} de PicadaGPS: ${pesos(Number(r.pago.ars))}. Mi cuenta: ${email ?? ""}. ¿Me pasás el alias para transferir?`;
       setPedido(plan);
       location.href = `https://wa.me/${r.whatsapp}?text=${encodeURIComponent(texto)}`;
     } catch (e) { setError((e as Error).message); }
@@ -28,17 +28,14 @@ export default function Planes({ email, onRevisar }: { email?: string; onRevisar
   };
 
   if (error && !p) return <p className="text-[14px] text-alerta">{error}</p>;
-  if (!p) return <p className="text-[14px] text-tenue">Consultando el precio del dólar de hoy…</p>;
+  if (!p) return <p className="text-[14px] text-tenue">Consultando el precio de hoy…</p>;
 
-  const mensualAnual = p.planes.anual.usd / 12;
+  const mensualAnual = p.planes.anual.ars / 12;
   const tarjeta = (id: "trimestral" | "anual", titulo: string, detalle: string) => {
     const pl = p.planes[id];
     return (
       <div className={`rounded-xl border p-3 bg-panel flex flex-col gap-1 ${id === "anual" ? "border-acento" : "border-linea"}`}>
-        <div className="flex items-baseline justify-between">
-          <span className="font-semibold text-[15px]">{titulo}</span>
-          <span className="num text-[13px] text-tenue">US$ {pl.usd}</span>
-        </div>
+        <span className="font-semibold text-[15px]">{titulo}</span>
         <span className="num text-[22px] font-bold">{pesos(pl.ars)}</span>
         <span className="text-[12px] text-tenue">{detalle}</span>
         <button onClick={() => pedir(id)} disabled={!!yendo}
@@ -59,10 +56,9 @@ export default function Planes({ email, onRevisar }: { email?: string; onRevisar
         </div>
       )}
       {tarjeta("trimestral", "Trimestral · 3 meses", "Un solo pago por transferencia, sin renovación automática.")}
-      {tarjeta("anual", "Anual · 12 meses", `Equivale a US$ ${mensualAnual.toFixed(2).replace(".", ",")} por mes. Un solo pago.`)}
+      {tarjeta("anual", "Anual · 12 meses", `Equivale a ${pesos(Math.round(mensualAnual))} por mes. Un solo pago.`)}
       <p className="text-[12px] text-tenue">
-        Pesos calculados con el dólar {NOMBRE_DOLAR[p.dolar.tipo] ?? p.dolar.tipo} de hoy: {pesos(p.dolar.venta)}
-        {p.dolar.fecha && <> (actualizado {new Date(p.dolar.fecha).toLocaleString("es-AR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })})</>}.
+        Precio de hoy, en pesos. Puede variar de un día a otro.
         Si ya tenés días disponibles, se suman.
       </p>
       {error && <p className="text-[13px] text-alerta">{error}</p>}
