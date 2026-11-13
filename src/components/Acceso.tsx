@@ -11,12 +11,10 @@ import {
 import Ingreso from "./Ingreso";
 import { reiniciarDatos } from "../lib/datos";
 import Planes from "./Planes";
-import Creditos from "./Creditos";
 
 type Vista = { tipo: "cargando" } | { tipo: "ingresar" } | { tipo: "ok"; a: TAcceso } | { tipo: "sin_acceso"; a: TAcceso } | { tipo: "sin_senal" } | { tipo: "error"; msj: string };
 
 export function Marco({ children, pie }: { children: ReactNode; pie?: ReactNode }) {
-  const [creditos, setCreditos] = useState(false);
   return (
     <div className="min-h-full bg-fondo flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-sm flex flex-col gap-4">
@@ -28,10 +26,8 @@ export function Marco({ children, pie }: { children: ReactNode; pie?: ReactNode 
         {children}
         <div className="flex items-center justify-center gap-4 text-[13px] text-tenue">
           {pie}
-          <button onClick={() => setCreditos(true)} className="underline">Créditos</button>
         </div>
       </div>
-      {creditos && <Creditos onCerrar={() => setCreditos(false)} />}
     </div>
   );
 }

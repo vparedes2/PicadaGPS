@@ -10,7 +10,6 @@ import type { Linea } from "./components/Mapa";
 import { useLista } from "./lib/guardado";
 import type { Acceso } from "./lib/cuenta";
 import Cuenta, { textoEstado } from "./components/Cuenta";
-import Creditos from "./components/Creditos";
 
 function useEnLinea() {
   const [en, setEn] = useState(navigator.onLine);
@@ -41,7 +40,7 @@ function Fila({ x, onClick, derecha }: { x: Pozo | Instalacion; onClick: () => v
   );
 }
 
-function Inicio({ datos, favoritos, recientes, onElegir, onSacarFav, onCreditos }: { datos: Datos; favoritos: string[]; recientes: string[]; onElegir: (k: string) => void; onSacarFav: (k: string) => void; onCreditos: () => void }) {
+function Inicio({ datos, favoritos, recientes, onElegir, onSacarFav }: { datos: Datos; favoritos: string[]; recientes: string[]; onElegir: (k: string) => void; onSacarFav: (k: string) => void }) {
   const fav = favoritos.map((k) => datos.porClave.get(k)).filter(Boolean) as (Pozo | Instalacion)[];
   const rec = recientes.filter((k) => !favoritos.includes(k)).map((k) => datos.porClave.get(k)).filter(Boolean).slice(0, 10) as (Pozo | Instalacion)[];
   const m = datos.meta?.fuentes;
@@ -73,7 +72,6 @@ function Inicio({ datos, favoritos, recientes, onElegir, onSacarFav, onCreditos 
         </ul>
         <p className="mt-2 text-tenue">Todo funciona sin señal una vez abierta la app con conexión. Para instalarla: en el menú del navegador, «Agregar a pantalla de inicio».</p>
         <p className="mt-2 text-tenue">Las coordenadas son las declaradas por las operadoras. Antes de salir, confirmá el acceso con la operadora. No uses la app mientras manejás.</p>
-        <button onClick={onCreditos} className="mt-2 underline text-tenue">Créditos</button>
       </section>
     </div>
   );
@@ -85,7 +83,6 @@ export default function App({ acceso }: { acceso: Acceso }) {
   const ruta = location.pathname.replace(/\/+$/, "");
   const [verCuenta, setVerCuenta] = useState(ruta === "/cuenta" || ruta === "/admin");
   const abrirCuenta = (si: boolean) => { setVerCuenta(si); history.replaceState(null, "", si ? "/cuenta" : "/"); };
-  const [verCreditos, setVerCreditos] = useState(false);
   const enLinea = useEnLinea();
   const [q, setQ] = useState("");
   const [sel, setSel] = useState<string | null>(null);
@@ -220,7 +217,7 @@ export default function App({ acceso }: { acceso: Acceso }) {
                 onElegir={(k) => elegir(k)} onVer={(lat, lon, zoom) => setCentrar({ lat, lon, zoom, n: Date.now() })}
                 yo={yo} onUbicarme={() => ubicarme()} ubicando={ubicando}
                 linea={linea} onLinea={(desde, tipo) => setLinea({ desde, tipo, n: Date.now() })} />
-            ) : <Inicio datos={datos} favoritos={favs.lista} recientes={recs.lista} onElegir={(k) => elegir(k)} onSacarFav={favs.sacar} onCreditos={() => setVerCreditos(true)} />}
+            ) : <Inicio datos={datos} favoritos={favs.lista} recientes={recs.lista} onElegir={(k) => elegir(k)} onSacarFav={favs.sacar} />}
           {avisoGps && <p className="text-[13px] text-alerta mt-2">{avisoGps}</p>}
         </div>
       </aside>
@@ -242,7 +239,6 @@ export default function App({ acceso }: { acceso: Acceso }) {
         </div>
       </main>
       {verCuenta && <Cuenta a={acceso} conAdmin={ruta === "/admin" && acceso.rol === "admin"} onCerrar={() => abrirCuenta(false)} />}
-      {verCreditos && <Creditos onCerrar={() => setVerCreditos(false)} />}
     </div>
   );
 }
