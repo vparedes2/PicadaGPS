@@ -84,6 +84,47 @@ export async function consultarAcceso(): Promise<Acceso> {
   return a;
 }
 
+/** ID público del cliente de Google (no es un secreto: Google lo muestra en cada inicio de sesión) */
+export const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "1084191561715-la6njhvdgdv7od0834nkgatrhrahdrlj.apps.googleusercontent.com";
+
+async function sha256hex(t: string) {
+  const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t));
+  return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * Botón oficial de Google en la propia página (Google Identity Services): la ventana dice
+ * «Ir a picadagps.ar» en lugar de la dirección técnica de Supabase. El token se valida en Supabase.
+ */
+export async function montarBotonGoogle(div: HTMLElement, ancho: number, alError: (m: string) => void): Promise<boolean> {
+  const g = await new Promise<any>((ok) => {
+    const w = window as any;
+    if (w.google?.accounts?.id) return ok(w.google);
+    const s = document.createElement("script");
+    s.src = "https://accounts.google.com/gsi/client"; s.async = true;
+    s.onload = () => ok(w.google); s.onerror = () => ok(null);
+    document.head.appendChild(s);
+    setTimeout(() => ok(w.google ?? null), 8000);
+  });
+  if (!g?.accounts?.id) return false;
+  const nonce = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(24))));
+  g.accounts.id.initialize({
+    client_id: GOOGLE_CLIENT_ID,
+    nonce: await sha256hex(nonce),
+    ux_mode: "popup",
+    use_fedcm_for_button: true,
+    callback: async (r: { credential?: string }) => {
+      if (!r.credential) return;
+      const { error } = await supabase.auth.signInWithIdToken({ provider: "google", token: r.credential, nonce });
+      if (error) alError("No se pudo entrar con Google: " + error.message);
+    }
+  });
+  div.innerHTML = "";
+  g.accounts.id.renderButton(div, { type: "standard", theme: "outline", size: "large", text: "continue_with", shape: "rectangular", logo_alignment: "center", width: Math.min(400, Math.max(220, Math.round(ancho))), locale: "es-419" });
+  return true;
+}
+
+/** Ingreso de respaldo por redirección (si el botón de Google no carga) */
 export const ingresarConGoogle = () =>
   supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${location.origin}${location.pathname}`, queryParams: { prompt: "select_account" } } });
 

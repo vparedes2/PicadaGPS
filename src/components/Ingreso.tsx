@@ -1,7 +1,7 @@
 /** Pantalla de ingreso: demo de la app, 7 días gratis, precios de los planes y botón de Google. */
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Search, Route, WifiOff, Navigation, MessageCircle, Share2 } from "lucide-react";
-import { ingresarConGoogle, consultarPrecios, pesos, type Precios } from "../lib/cuenta";
+import { ingresarConGoogle, montarBotonGoogle, consultarPrecios, pesos, type Precios } from "../lib/cuenta";
 import { compartirWhatsApp } from "../lib/compartir";
 
 const LOGO_GOOGLE = (
@@ -45,6 +45,31 @@ const VENTAJAS = [
   { i: Navigation, t: "Abrí Waze o Google Maps con un toque" },
   { i: WifiOff, t: "Funciona sin señal en el yacimiento" }
 ];
+
+/** Botón oficial de Google; si no carga (bloqueador, sin red), queda el botón propio con redirección */
+function BotonGoogle() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [oficial, setOficial] = useState<boolean | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    const d = ref.current; if (!d) return;
+    montarBotonGoogle(d, d.parentElement?.clientWidth ?? 320, setError).then(setOficial).catch(() => setOficial(false));
+  }, []);
+  return (
+    <>
+      <div className={`relative flex justify-center py-2 rounded-xl border-2 border-acento bg-panel shadow-md ${oficial ? "" : "hidden"}`}>
+        <div ref={ref} className="min-h-[44px]" />
+      </div>
+      {oficial === false && (
+        <button onClick={() => ingresarConGoogle()} className="relative w-full flex items-center justify-center gap-3 py-4 rounded-xl border-2 border-acento bg-panel text-[17px] font-bold shadow-md">
+          {LOGO_GOOGLE} Entrar con Google
+        </button>
+      )}
+      {oficial === null && <div className="py-4 rounded-xl border-2 border-acento bg-panel text-center text-[15px] text-tenue">Cargando el ingreso con Google…</div>}
+      {error && <p className="mt-2 text-[13px] text-alerta text-center">{error}</p>}
+    </>
+  );
+}
 
 export default function Ingreso({ aviso }: { aviso?: ReactNode }) {
   const [p, setP] = useState<Precios | null>(null);
@@ -109,9 +134,7 @@ export default function Ingreso({ aviso }: { aviso?: ReactNode }) {
         {/* Botón principal con un brillo que late y una mano que invita a tocarlo */}
         <div className="relative mt-1">
           <span className="google-latido absolute inset-0 rounded-xl" aria-hidden="true" />
-          <button onClick={() => ingresarConGoogle()} className="relative w-full flex items-center justify-center gap-3 py-4 rounded-xl border-2 border-acento bg-panel text-[17px] font-bold shadow-md">
-            {LOGO_GOOGLE} Entrar con Google
-          </button>
+          <BotonGoogle />
           <svg className="google-mano absolute -bottom-7 right-6 w-11 h-11 pointer-events-none drop-shadow" viewBox="0 0 48 48" aria-hidden="true">
             <path d="M19 6.5c-1.9 0-3.4 1.5-3.4 3.4v15.6l-2.6-2.7c-1.4-1.4-3.6-1.5-5-.2-1.3 1.3-1.4 3.4-.2 4.8l9.4 11.4c1.9 2.3 4.7 3.7 7.7 3.7h6.6c5 0 9-4 9-9V23.6c0-1.8-1.5-3.3-3.3-3.3-.8 0-1.6.3-2.2.9v-.2c0-1.8-1.5-3.3-3.3-3.3-.9 0-1.7.4-2.3 1-.3-1.6-1.7-2.8-3.3-2.8-.7 0-1.4.2-1.9.6V9.9C22.4 8 20.9 6.5 19 6.5z" fill="#fff" stroke="#1c1a17" strokeWidth="2.4" strokeLinejoin="round" />
             <path d="M22.4 16.5v8M29 18.3v7M35.5 21.2v5" stroke="#1c1a17" strokeWidth="2.2" strokeLinecap="round" />
