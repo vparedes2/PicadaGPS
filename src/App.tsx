@@ -81,7 +81,10 @@ function Inicio({ datos, favoritos, recientes, onElegir, onSacarFav, onCreditos 
 
 export default function App({ acceso }: { acceso: Acceso }) {
   const { datos, error } = useDatos();
-  const [verCuenta, setVerCuenta] = useState(false);
+  // Direcciones propias: picadagps.ar/cuenta y picadagps.ar/admin abren esos paneles
+  const ruta = location.pathname.replace(/\/+$/, "");
+  const [verCuenta, setVerCuenta] = useState(ruta === "/cuenta" || ruta === "/admin");
+  const abrirCuenta = (si: boolean) => { setVerCuenta(si); history.replaceState(null, "", si ? "/cuenta" : "/"); };
   const [verCreditos, setVerCreditos] = useState(false);
   const enLinea = useEnLinea();
   const [q, setQ] = useState("");
@@ -175,7 +178,7 @@ export default function App({ acceso }: { acceso: Acceso }) {
               <button onClick={compartirWhatsApp} aria-label="Compartir la app por WhatsApp" title="Compartir por WhatsApp" className="p-1.5 rounded-md border border-linea text-acento">
                 <Share2 className="w-4 h-4" />
               </button>
-              <button onClick={() => setVerCuenta(true)} className={`flex items-center gap-1 px-2 py-1 rounded-md border text-[12px] ${acceso.estado === "prueba" ? "border-acento text-acento" : "border-linea text-tenue"}`}>
+              <button onClick={() => abrirCuenta(true)} className={`flex items-center gap-1 px-2 py-1 rounded-md border text-[12px] ${acceso.estado === "prueba" ? "border-acento text-acento" : "border-linea text-tenue"}`}>
                 <UserRound className="w-4 h-4" /> {textoEstado(acceso)}
               </button>
             </span>
@@ -238,7 +241,7 @@ export default function App({ acceso }: { acceso: Acceso }) {
           </button>
         </div>
       </main>
-      {verCuenta && <Cuenta a={acceso} onCerrar={() => setVerCuenta(false)} />}
+      {verCuenta && <Cuenta a={acceso} conAdmin={ruta === "/admin" && acceso.rol === "admin"} onCerrar={() => abrirCuenta(false)} />}
       {verCreditos && <Creditos onCerrar={() => setVerCreditos(false)} />}
     </div>
   );

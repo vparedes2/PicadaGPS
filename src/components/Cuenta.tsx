@@ -14,10 +14,11 @@ export const textoEstado = (a: Acceso) =>
   : a.estado === "activo" ? `Plan ${a.plan ?? ""} · hasta ${new Date(a.hasta!).toLocaleDateString("es-AR")}`
   : "Sin acceso";
 
-export default function Cuenta({ a, onCerrar }: { a: Acceso; onCerrar: () => void }) {
+export default function Cuenta({ a, onCerrar, conAdmin = false }: { a: Acceso; onCerrar: () => void; conAdmin?: boolean }) {
   const [pagos, setPagos] = useState<any[] | null>(null);
   const [creditos, setCreditos] = useState(false);
-  const [admin, setAdmin] = useState(false);
+  const [admin, setAdminEstado] = useState(conAdmin);
+  const setAdmin = (si: boolean) => { setAdminEstado(si); history.replaceState(null, "", si ? "/admin" : "/cuenta"); };
   useEffect(() => { if (navigator.onLine) misPagos().then((r) => setPagos(r.pagos)).catch(() => setPagos([])); }, []);
 
   const cerrarSesion = async () => { await salir(); reiniciarDatos(); location.reload(); };

@@ -85,7 +85,7 @@ export async function consultarAcceso(): Promise<Acceso> {
 }
 
 export const ingresarConGoogle = () =>
-  supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${location.origin}/`, queryParams: { prompt: "select_account" } } });
+  supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${location.origin}${location.pathname}`, queryParams: { prompt: "select_account" } } });
 
 export async function salir() {
   // Libera este teléfono para que la cuenta pueda usarse en otro
