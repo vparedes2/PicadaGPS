@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { X, Search, RefreshCw } from "lucide-react";
 import { admin, pesos, NOMBRE_DOLAR } from "../lib/cuenta";
+import Simulador from "./Simulador";
 
 interface CuentaAdm {
   user_id: string; email: string; nombre: string | null; rol: string; creado: string; prueba_hasta: string;
@@ -235,7 +236,7 @@ function Estadisticas({ e, alVer }: { e: Est; alVer: (filtro: string) => void })
 export default function Admin({ onCerrar }: { onCerrar: () => void }) {
   const [d, setD] = useState<{ cuentas: CuentaAdm[]; pagos: Pago[]; config: Config; dispositivos: Disp[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [pestana, setPestana] = useState<"estadísticas" | "usuarios" | "pagos" | "precios">("estadísticas");
+  const [pestana, setPestana] = useState<"estadísticas" | "usuarios" | "pagos" | "precios" | "simulador">("estadísticas");
   const [q, setQ] = useState("");
   const [filtro, setFiltro] = useState("todos");
   const cargar = () => { setError(null); admin("listar").then(setD).catch((e) => setError(e.message)); };
@@ -329,11 +330,12 @@ export default function Admin({ onCerrar }: { onCerrar: () => void }) {
                 </div>
               ))}
             </div>
-            <div className="flex gap-1 border-b border-linea">
-              {(["estadísticas", "usuarios", "pagos", "precios"] as const).map((p) => (
-                <button key={p} onClick={() => setPestana(p)} className={`px-3 py-2 text-[14px] capitalize ${pestana === p ? "border-b-2 border-acento font-semibold" : "text-tenue"}`}>{p}</button>
+            <div className="flex gap-1 border-b border-linea overflow-x-auto">
+              {(["estadísticas", "usuarios", "pagos", "precios", "simulador"] as const).map((p) => (
+                <button key={p} onClick={() => setPestana(p)} className={`px-3 py-2 text-[14px] capitalize whitespace-nowrap ${pestana === p ? "border-b-2 border-acento font-semibold" : "text-tenue"}`}>{p}</button>
               ))}
             </div>
+            {pestana === "simulador" && <Simulador />}
             {pestana === "estadísticas" && est && <Estadisticas e={est} alVer={(f) => { setFiltro(f); setPestana("usuarios"); }} />}
             {pestana === "usuarios" && (
               <>
