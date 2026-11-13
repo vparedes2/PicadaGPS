@@ -70,3 +70,17 @@ button { cursor: pointer; }
   .flota-sat { width: 58px; right: 1%; top: 14%; }
   .flota-pin { width: 44px; left: 2%; }
 }
+
+/* Ingreso: el botón de Google late y una mano lo toca */
+.google-latido { box-shadow: 0 0 0 0 rgba(31, 111, 74, .55); animation: latido 2.2s ease-out infinite; }
+@keyframes latido { 0% { box-shadow: 0 0 0 0 rgba(31,111,74,.5); } 70% { box-shadow: 0 0 0 14px rgba(31,111,74,0); } 100% { box-shadow: 0 0 0 0 rgba(31,111,74,0); } }
+.google-mano { transform-origin: 19px 8px; animation: mano 2.2s ease-in-out infinite; }
+@keyframes mano {
+  0%, 100% { transform: translate(14px, 16px) rotate(-14deg); opacity: .0; }
+  15% { opacity: 1; }
+  45% { transform: translate(0, 0) rotate(-14deg) scale(1); }
+  55% { transform: translate(0, 2px) rotate(-14deg) scale(.9); }
+  70% { transform: translate(0, 0) rotate(-14deg) scale(1); opacity: 1; }
+  90% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .google-latido, .google-mano { animation: none; } .google-mano { transform: rotate(-14deg); } }
