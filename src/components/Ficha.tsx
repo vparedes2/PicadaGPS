@@ -102,7 +102,8 @@ export default function Ficha({ x, datos, favorito, onFavorito, onCerrar, onEleg
     if (ref.vecinos.length) l.push(`🛢️ En la misma locación: ${ref.vecinos.slice(0, 4).map((v) => nombreDe(v).replace(/^[^.]+\.Nq\./, "")).join(", ")}${ref.vecinos.length > 4 ? "…" : ""}`);
     l.push("");
     l.push(`🛰️ Satélite: ${enlaceSatelite(lat, lon)}`);
-    l.push(`🚗 Waze: ${enlaceWaze(lat, lon)}`);
+    l.push(`🚗 Waze al ${esPozo(x) ? "pozo" : "lugar"}: ${enlaceWaze(lat, lon)}`);
+    if (ref.ruta && ref.ruta.d > 300) l.push(`🚗 Waze a la salida de la ruta: ${enlaceWaze(ref.ruta.lat, ref.ruta.lon)}`);
     l.push(`📲 Ver en PicadaGPS: ${enlaceApp(x.k)}`);
     l.push("");
     l.push("_Ubicá cualquier pozo de Neuquén sin señal con *PicadaGPS.ar* · 7 días gratis_");
@@ -146,8 +147,15 @@ export default function Ficha({ x, datos, favorito, onFavorito, onCerrar, onEleg
         <Nav href={enlaceGoogle(lat, lon)}><MapPin className="w-5 h-5" /> Google Maps</Nav>
         <Nav href={enlaceOtraApp(lat, lon, nombre)}>{nombreOtraApp()}</Nav>
       </section>
+      {ref.ruta && ref.ruta.d > 300 && (
+        <a href={enlaceWaze(ref.ruta.lat, ref.ruta.lon)} target="_blank" rel="noopener"
+          className="-mt-2 flex items-center gap-2 px-3 py-2.5 rounded-lg border border-linea bg-panel text-[14px]">
+          <Route className="w-5 h-5 shrink-0 text-[#b88a00]" />
+          <span className="leading-snug"><b>¿Waze no encuentra camino?</b> Llevate con Waze hasta la salida de {ref.ruta.nombre} y seguí {textoDist(ref.ruta.d)} al {cardinal(rumbo(ref.ruta.lat, ref.ruta.lon, lat, lon))} con el mapa de acá.</span>
+        </a>
+      )}
       <p className="text-[12px] text-tenue -mt-2 leading-snug">
-        Sin señal, Google Maps solo traza la ruta si descargaste la zona en «Mapas sin conexión», y en general no conoce las picadas. Para el último tramo usá las referencias de abajo.
+        Waze y Google Maps no conocen muchas picadas: si el pozo queda lejos de un camino cargado, te dejan en el punto más cercano que conocen. Sin señal, Google Maps solo traza la ruta si descargaste la zona en «Mapas sin conexión». Para el último tramo usá las referencias de abajo.
       </p>
 
       <section className="flex flex-col gap-2" aria-label="Coordenadas">
