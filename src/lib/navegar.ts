@@ -2,12 +2,10 @@
 const esIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 const esAndroid = () => /Android/i.test(navigator.userAgent);
 
-/**
- * Waze: por defecto evita los caminos de tierra («avoid_trails»), y casi todo el acceso a las locaciones lo es,
- * por eso a veces decía que no hay ruta. Con avoid_trails=allow los usa.
- */
-export const enlaceWaze = (lat: number, lon: number) =>
-  `https://www.waze.com/ul?ll=${lat.toFixed(6)},${lon.toFixed(6)}&navigate=yes&zoom=17&avoid_trails=allow`;
+/** Waze con el formato básico de su documentación (con parámetros extra, algunas versiones dan «Unknown error») */
+export const enlaceWaze = (lat: number, lon: number) => `https://waze.com/ul?ll=${lat.toFixed(6)},${lon.toFixed(6)}&navigate=yes`;
+/** Solo muestra el punto en Waze, sin arrancar la navegación: el usuario toca «Ir» o elige un punto cercano */
+export const enlaceWazeVer = (lat: number, lon: number) => `https://waze.com/ul?ll=${lat.toFixed(6)},${lon.toFixed(6)}&zoom=16`;
 export const enlaceGoogle = (lat: number, lon: number) => `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}&travelmode=driving`;
 export const enlaceVer = (lat: number, lon: number) => `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
 

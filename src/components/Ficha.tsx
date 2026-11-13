@@ -3,7 +3,7 @@ import { Copy, Check, Star, Share2, Navigation, MapPin, Crosshair, Download, X, 
 import type { Linea, Marca } from "./Mapa";
 import { esPozo, nombreDe, type Datos, type Instalacion, type Pozo } from "../lib/datos";
 import { aDMS, cardinal, distM, rumbo, rutaMasCercana, textoDist } from "../lib/geo";
-import { copiar, enlaceGoogle, enlaceOtraApp, enlaceWaze, guardarZona, nombreOtraApp } from "../lib/navegar";
+import { copiar, enlaceGoogle, enlaceOtraApp, enlaceWaze, enlaceWazeVer, guardarZona, nombreOtraApp } from "../lib/navegar";
 import { compartirUbicacion, enlaceApp, enlaceSatelite } from "../lib/compartir";
 import { capturarSatelite } from "./Mapa";
 
@@ -151,9 +151,12 @@ export default function Ficha({ x, datos, favorito, onFavorito, onCerrar, onEleg
         <a href={enlaceWaze(ref.ruta.lat, ref.ruta.lon)} target="_blank" rel="noopener"
           className="-mt-2 flex items-center gap-2 px-3 py-2.5 rounded-lg border border-linea bg-panel text-[14px]">
           <Route className="w-5 h-5 shrink-0 text-[#b88a00]" />
-          <span className="leading-snug"><b>¿Waze no encuentra camino?</b> Llevate con Waze hasta la salida de {ref.ruta.nombre} y seguí {textoDist(ref.ruta.d)} al {cardinal(rumbo(ref.ruta.lat, ref.ruta.lon, lat, lon))} con el mapa de acá.</span>
+          <span className="leading-snug"><b>¿Waze da error o no encuentra camino?</b> Llevate con Waze hasta la salida de {ref.ruta.nombre} y seguí {textoDist(ref.ruta.d)} al {cardinal(rumbo(ref.ruta.lat, ref.ruta.lon, lat, lon))} con el mapa de acá.</span>
         </a>
       )}
+      <a href={enlaceWazeVer(lat, lon)} target="_blank" rel="noopener" className="-mt-2 text-[13px] underline text-tenue">
+        Ver el punto en Waze sin arrancar la navegación
+      </a>
       <p className="text-[12px] text-tenue -mt-2 leading-snug">
         Waze y Google Maps no conocen muchas picadas: si el pozo queda lejos de un camino cargado, te dejan en el punto más cercano que conocen. Sin señal, Google Maps solo traza la ruta si descargaste la zona en «Mapas sin conexión». Para el último tramo usá las referencias de abajo.
       </p>
