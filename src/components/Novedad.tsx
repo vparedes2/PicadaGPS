@@ -3,7 +3,7 @@ import { useState } from "react";
 import { X, MapPinned } from "lucide-react";
 import type { Datos } from "../lib/datos";
 
-const CLAVE = "picadagps.novedad.provincias-2025c";
+const CLAVE = "picadagps.novedad.provincias-2025d";
 
 export default function Novedad({ datos }: { datos: Datos }) {
   const otras = datos.meta?.fuentes?.pozos_otras;
@@ -13,6 +13,7 @@ export default function Novedad({ datos }: { datos: Datos }) {
   const provs = Object.entries(otras.provincias).sort((a, b) => b[1] - a[1]);
   const nq = datos.meta?.fuentes?.pozos?.cantidad ?? 0;
   const inst = datos.meta?.fuentes?.instalaciones?.cantidad ?? datos.instalaciones.length;
+  const otrasInst = (datos.meta?.fuentes as any)?.instalaciones_otras?.cantidad ?? 0;
   const n = (x: number) => x.toLocaleString("es-AR");
 
   return (
@@ -29,7 +30,7 @@ export default function Novedad({ datos }: { datos: Datos }) {
           <li className="px-3 pt-1 text-[13px] text-tenue">Y siguen Neuquén con {n(nq)} pozos y {n(inst)} instalaciones.</li>
         </ul>
         <p className="mt-3 text-[13px] text-tenue leading-snug">
-          Los pozos nuevos vienen del listado oficial de las operadoras (datos 2025). También sumamos las áreas de concesión de las tres provincias y los caminos de yacimiento de Río Negro (OpenStreetMap). Las instalaciones por ahora son solo de Neuquén; las vamos a ir sumando.
+          Los pozos nuevos vienen del listado oficial de las operadoras (datos 2025). También sumamos las áreas de concesión de las tres provincias y los caminos de yacimiento de Río Negro (OpenStreetMap). Y sumamos {n(otrasInst)} baterías, plantas y puntos de medición de las tres provincias (Secretaría de Energía).
         </p>
         <button onClick={cerrar} className="mt-4 w-full py-3 rounded-xl bg-acento text-acento-texto font-semibold text-[15px]">Ver el mapa</button>
       </div>

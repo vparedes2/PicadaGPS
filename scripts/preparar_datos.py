@@ -453,8 +453,16 @@ def main():
 
     inst, f_inst, o_inst = con_respaldo("instalaciones.json", capa_monitor("instalaciones"))
     inst = preparar_instalaciones(inst)
-    guardar("instalaciones.json", inst)
     meta["fuentes"]["instalaciones"] = {"fecha": f_inst, "cantidad": len(inst["filas"]), "origen": o_inst}
+    # Río Negro, Mendoza y La Pampa: baterías, plantas y puntos de medición de la Secretaría de Energía
+    # (Res. 319/93 y 318/2010), ya filtrados y con su área en data/fuente
+    ruta_otras = os.path.join(FUENTE, "instalaciones-otras-provincias.json")
+    if os.path.exists(ruta_otras):
+        with open(ruta_otras, encoding="utf-8") as f:
+            io = json.load(f)
+        inst["filas"] += io["filas"]
+        meta["fuentes"]["instalaciones_otras"] = {"fecha": "2026-11", "cantidad": len(io["filas"]), "provincias": io.get("provincias", {})}
+    guardar("instalaciones.json", inst)
 
     areas, f_areas, o_areas = con_respaldo("areas.json", capa_monitor("areas"))
     if areas:
