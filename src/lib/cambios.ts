@@ -13,7 +13,7 @@ export const VERSIONES: Version[] = [
       "13.469 pozos nuevos: Mendoza, Río Negro y La Pampa (listado oficial de operadoras, 2025).",
       "Áreas de concesión de las tres provincias en el mapa y en la búsqueda.",
       "490 baterías, plantas y puntos de medición de las tres provincias.",
-      "Caminos de yacimiento de Río Negro (OpenStreetMap).",
+      "Caminos de yacimiento de Río Negro, Mendoza y La Pampa (OpenStreetMap).",
       "Búsqueda por yacimiento: «vacas muertas» o «lunlunta» encuentran sus pozos, y cada resultado muestra yacimiento y área."
     ]
   },
@@ -248,6 +248,10 @@ export const TECNICO: Record<string, [string, string][]> = {
     [
       "15:40",
       "Novedades para el usuario en Mi cuenta y registro de cambios con fecha y hora en Administración"
+    ],
+    [
+      "15:55",
+      "Caminos de OpenStreetMap de Mendoza y La Pampa (21.783 tramos en total) y se restauran las instalaciones de otras provincias"
     ]
   ]
 };
