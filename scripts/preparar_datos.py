@@ -320,12 +320,12 @@ def overpass(q, timeout=300):
 ZONA_CAMINOS = (-70.4, -39.3, -67.8, -36.9)
 
 
-CAMINOS_PROVINCIAS = {"Rio Negro"}
+CAMINOS_PROVINCIAS = {"Rio Negro", "Mendoza", "La Pampa"}
 
 
 def zonas_otras_provincias():
     """Cuadros de medio grado con pozos de otras provincias que quedan fuera de la zona de Neuquén.
-    Por ahora solo Río Negro (sumar "Mendoza" o "La Pampa" a CAMINOS_PROVINCIAS cuando haga falta)."""
+    Provincias en CAMINOS_PROVINCIAS."""
     p = os.path.join(FUENTE, "pozos-otras-provincias-2025.csv")
     if not os.path.exists(p):
         return []
