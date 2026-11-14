@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, Satellite, Map as MapaIcono, Star, Clock, WifiOff, Info, Factory, X, Crosshair, UserRound, Layers, Share2 } from "lucide-react";
+import { Search, Satellite, Map as MapaIcono, Star, Clock, WifiOff, Info, Factory, X, Crosshair, UserRound, Layers, Share2, MapPin } from "lucide-react";
 import { compartirWhatsApp } from "./lib/compartir";
 import Mapa from "./components/Mapa";
 import Ficha from "./components/Ficha";
@@ -25,6 +25,10 @@ function useEnLinea() {
 
 const fecha = (iso?: string | null) => (iso ? new Date(`${iso.slice(0, 10)}T12:00:00`).toLocaleDateString("es-AR", { day: "numeric", month: "long", year: "numeric" }) : "sin dato");
 
+/** "Vacas Muertas · La Ventana": el yacimiento va adelante cuando no se llama igual que el área */
+const distinto = (a?: string, b?: string) => !!a && !!b && a.trim().toUpperCase() !== b.trim().toUpperCase() && !/^sin dato/i.test(a);
+const conYacimiento = (x: Pozo) => (distinto(x.yacimiento, x.area) ? `${x.yacimiento} · ${x.area}` : x.area);
+
 function Fila({ x, onClick, derecha }: { x: Pozo | Instalacion; onClick: () => void; derecha?: React.ReactNode }) {
   return (
     <li className="flex items-center">
@@ -33,7 +37,7 @@ function Fila({ x, onClick, derecha }: { x: Pozo | Instalacion; onClick: () => v
         <span className="min-w-0">
           <span className="num block text-[15px] truncate">{nombreDe(x)}</span>
           <span className="block text-[12px] text-tenue truncate">
-            {esPozo(x) ? `${x.area} · ${x.tipo} · ${x.estado}` : `${x.tipo} · ${x.area}`}
+            {esPozo(x) ? `${conYacimiento(x)} · ${x.tipo} · ${x.estado}` : `${x.tipo} · ${x.area}`}
           </span>
         </span>
       </button>
@@ -119,8 +123,22 @@ export default function App({ acceso }: { acceso: Acceso }) {
     return m;
   }, [datos]);
   const areasHalladas = useMemo(() => (q.trim().length >= 3 ? buscarAreas([...areasInfo.keys()], q) : []), [areasInfo, q]);
+  // Yacimientos que no se llaman como su área (Vacas Muertas en La Ventana, Lunlunta-Carrizal en Barrancas):
+  // la caja sale de sus pozos
+  const yacInfo = useMemo(() => {
+    const m = new Map<string, { caja: [number, number, number, number]; area: string; pozos: number }>();
+    if (!datos) return m;
+    for (const p of datos.pozos) {
+      if (!distinto(p.yacimiento, p.area)) continue;
+      const y = m.get(p.yacimiento);
+      if (!y) { m.set(p.yacimiento, { caja: [p.lon, p.lat, p.lon, p.lat], area: p.area, pozos: 1 }); continue; }
+      const c = y.caja; y.caja = [Math.min(c[0], p.lon), Math.min(c[1], p.lat), Math.max(c[2], p.lon), Math.max(c[3], p.lat)]; y.pozos++;
+    }
+    return m;
+  }, [datos]);
+  const yacHallados = useMemo(() => (q.trim().length >= 3 ? buscarAreas([...yacInfo.keys()], q).filter((n) => !areasInfo.has(n)) : []), [yacInfo, areasInfo, q]);
   const irArea = (nombre: string) => {
-    const a = areasInfo.get(nombre); if (!a) return;
+    const a = areasInfo.get(nombre) ?? yacInfo.get(nombre); if (!a) return;
     const [x0, y0, x1, y1] = a.caja;
     const lado = Math.max(x1 - x0, (y1 - y0) * 1.3, 0.005);
     setSel(null); setQ("");
@@ -196,7 +214,7 @@ export default function App({ acceso }: { acceso: Acceso }) {
         <div className="flex-1 overflow-y-auto p-3">
           {!datos ? <p className="text-[14px] text-tenue">Cargando los datos en el teléfono…</p>
             : q.trim().length >= 2 ? (
-              resultados.length || areasHalladas.length ? (
+              resultados.length || areasHalladas.length || yacHallados.length ? (
                 <div className="flex flex-col gap-2">
                   {areasHalladas.length > 0 && (
                     <ul className="rounded-lg border border-linea bg-panel divide-y divide-linea">
@@ -207,6 +225,21 @@ export default function App({ acceso }: { acceso: Acceso }) {
                             <span className="min-w-0">
                               <span className="block text-[15px] font-medium truncate">Área {n}</span>
                               <span className="block text-[12px] text-tenue truncate">{areasInfo.get(n)?.pozos.toLocaleString("es-AR")} pozos{areasInfo.get(n)?.operador ? ` · ${areasInfo.get(n)?.operador}` : ""} · ver en el mapa</span>
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {yacHallados.length > 0 && (
+                    <ul className="rounded-lg border border-linea bg-panel divide-y divide-linea">
+                      {yacHallados.map((n) => (
+                        <li key={n}>
+                          <button onClick={() => irArea(n)} className="w-full text-left px-3 py-2.5 flex items-center gap-3">
+                            <MapPin className="w-4 h-4 text-acento shrink-0" />
+                            <span className="min-w-0">
+                              <span className="block text-[15px] font-medium truncate">Yacimiento {n}</span>
+                              <span className="block text-[12px] text-tenue truncate">{yacInfo.get(n)?.pozos.toLocaleString("es-AR")} pozos · área {yacInfo.get(n)?.area} · ver en el mapa</span>
                             </span>
                           </button>
                         </li>
