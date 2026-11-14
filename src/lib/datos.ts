@@ -3,7 +3,8 @@
  * (solo responde si la prueba o el plan están vigentes) y se guardan en el teléfono para usarlos sin señal.
  */
 import { useEffect, useState } from "react";
-import { CACHE_DATOS, token, dispositivo } from "./cuenta";
+import { CACHE_DATOS, token, dispositivo, accesoGuardado } from "./cuenta";
+import { puntosParaApp } from "./empresa";
 import { compactar, normalizar, type Indexado } from "./buscar";
 import type { Ruta } from "./geo";
 
@@ -11,7 +12,11 @@ export interface Pozo {
   k: string; sigla: string; area: string; empresa: string; yacimiento: string; tipo: string; estado: string;
   recurso: string; extraccion: string; lat: number; lon: number; idpozo: number | null; inicio: string | null;
 }
-export interface Instalacion { k: string; nombre: string; tipo: string; area: string; operador: string; lat: number; lon: number }
+export interface Instalacion {
+  k: string; nombre: string; tipo: string; area: string; operador: string; lat: number; lon: number;
+  /** Punto propio de la empresa del usuario */
+  propio?: { id: string; color: string; nota: string | null; estado: string; empresa: string };
+}
 export interface Meta { generado: string; fuentes: Record<string, { fecha: string | null; cantidad: number; origen?: string; ultimo_inicio_perforacion?: string | null; provincias?: Record<string, number> }> }
 
 export interface Datos {
@@ -97,6 +102,15 @@ async function cargar(): Promise<Datos> {
   const instalaciones: Instalacion[] = (ins?.filas || []).map((f: any[], i: number) => ({
     k: `i${i}`, nombre: f[0], tipo: f[1], area: f[2], operador: f[3], lat: f[4], lon: f[5]
   }));
+  // Puntos propios de la empresa (si el usuario pertenece a una): se suman como instalaciones
+  if (accesoGuardado()?.empresa) {
+    const pe = await puntosParaApp(forzarPuntos).catch(() => null);
+    forzarPuntos = false;
+    if (pe?.empresa) for (const p of pe.puntos) instalaciones.push({
+      k: `e${p.id}`, nombre: p.nombre, tipo: p.tipo, area: `Punto de ${pe.empresa.nombre}`, operador: pe.empresa.nombre, lat: p.lat, lon: p.lon,
+      propio: { id: p.id, color: pe.empresa.color, nota: p.nota, estado: p.estado, empresa: pe.empresa.nombre }
+    });
+  }
   const aLineas = (fc: any, sinNombre: string): Ruta[] => (fc?.features || []).map((f: any) => {
     const c: number[][] = f.geometry.coordinates;
     const xs = c.map((x) => x[0]), ys = c.map((x) => x[1]);
@@ -106,7 +120,7 @@ async function cargar(): Promise<Datos> {
   const caminos = aLineas(caminosGeo, "Camino de yacimiento");
   const indice: Indexado[] = [
     ...pozos.map((x, i) => ({ i, codigo: compactar(x.sigla), texto: normalizar(`${x.area} ${x.yacimiento} ${x.empresa} ${x.tipo}`), tipo: x.tipo, activo: ACTIVOS.test(x.estado) })),
-    ...instalaciones.map((x, j) => ({ i: pozos.length + j, codigo: compactar(x.nombre), texto: normalizar(`${x.tipo} ${x.area} ${x.operador}`), tipo: "Instalación", activo: true }))
+    ...instalaciones.map((x, j) => ({ i: pozos.length + j, codigo: compactar(x.nombre), texto: normalizar(`${x.tipo} ${x.area} ${x.operador} ${x.propio?.nota ?? ""}`), tipo: "Instalación", activo: true }))
   ];
   const porClave = new Map<string, Pozo | Instalacion>();
   pozos.forEach((x) => porClave.set(x.k, x));
@@ -115,12 +129,20 @@ async function cargar(): Promise<Datos> {
 }
 
 let promesa: Promise<Datos> | null = null;
+let forzarPuntos = false;
 export const reiniciarDatos = () => { promesa = null; };
+/** Vuelve a armar los datos (por ejemplo, después de cargar un punto propio) */
+export const recargarDatos = () => { promesa = null; forzarPuntos = true; dispatchEvent(new Event("picada-datos")); };
 export function useDatos() {
   const [estado, setEstado] = useState<{ datos?: Datos; error?: string }>({});
   useEffect(() => {
-    promesa ??= cargar();
-    promesa.then((datos) => setEstado({ datos })).catch((e) => { promesa = null; setEstado({ error: e.message }); });
+    const ir = () => {
+      promesa ??= cargar();
+      promesa.then((datos) => setEstado({ datos })).catch((e) => { promesa = null; setEstado((v) => (v.datos ? v : { error: e.message })); });
+    };
+    ir();
+    addEventListener("picada-datos", ir);
+    return () => removeEventListener("picada-datos", ir);
   }, []);
   return estado;
 }

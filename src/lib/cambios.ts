@@ -6,6 +6,18 @@
 export interface Version { version: string; fecha: string; titulo: string; usuario: string[] }
 export const VERSIONES: Version[] = [
   {
+    "version": "1.4",
+    "fecha": "2026-11-14",
+    "titulo": "Plan Empresa: puntos propios y portal de empresas",
+    "usuario": [
+      "Portal para empresas en picadagps.ar/empresas: alta, usuarios con roles y marca propia.",
+      "Puntos propios de cada empresa (tranqueras, pads, bases, picadas sin mapa) en el mapa, la búsqueda y sin señal.",
+      "«Agregar punto acá» con el GPS del teléfono; sin señal queda guardado y se envía solo al volver la conexión.",
+      "Importación de puntos desde KML de Google Earth, GPX, GeoJSON o planilla CSV.",
+      "Los usuarios de una empresa activa entran con plan Empresa."
+    ]
+  },
+  {
     "version": "1.3",
     "fecha": "2026-11-14",
     "titulo": "Pozos, áreas e instalaciones de Río Negro, Mendoza y La Pampa",
@@ -252,6 +264,10 @@ export const TECNICO: Record<string, [string, string][]> = {
     [
       "15:55",
       "Caminos de OpenStreetMap de Mendoza y La Pampa (21.783 tramos en total) y se restauran las instalaciones de otras provincias"
+    ],
+    [
+      "17:45",
+      "Plan Empresa: tablas y funciones en Supabase, portal /empresas y empresas.picadagps.ar, puntos propios en la app, pestaña Empresas en Administración. Piloto: Transporte Bardone"
     ]
   ]
 };

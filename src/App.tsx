@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Search, Satellite, Map as MapaIcono, Star, Clock, WifiOff, Info, Factory, X, Crosshair, UserRound, Layers, Share2, MapPin } from "lucide-react";
 import { compartirWhatsApp } from "./lib/compartir";
 import Mapa from "./components/Mapa";
+import PuntoNuevo, { enviarCola, puntosEnCola } from "./components/PuntoNuevo";
+import { urlPortal } from "./lib/empresa";
 import Ficha from "./components/Ficha";
 import { useDatos, esPozo, nombreDe, type Datos, type Pozo, type Instalacion } from "./lib/datos";
 import { buscarPorPartes, buscarAreas } from "./lib/buscar";
@@ -33,7 +35,7 @@ function Fila({ x, onClick, derecha }: { x: Pozo | Instalacion; onClick: () => v
   return (
     <li className="flex items-center">
       <button onClick={onClick} className="flex-1 min-w-0 text-left px-3 py-2.5 flex items-center gap-3">
-        {esPozo(x) ? <span className="w-2.5 h-2.5 rounded-full bg-pozo shrink-0" /> : <Factory className="w-4 h-4 text-instalacion shrink-0" />}
+        {esPozo(x) ? <span className="w-2.5 h-2.5 rounded-full bg-pozo shrink-0" /> : x.propio ? <MapPin className="w-4 h-4 shrink-0" style={{ color: x.propio.estado === "pendiente" ? "#e0a100" : x.propio.color }} /> : <Factory className="w-4 h-4 text-instalacion shrink-0" />}
         <span className="min-w-0">
           <span className="num block text-[15px] truncate">{nombreDe(x)}</span>
           <span className="block text-[12px] text-tenue truncate">
@@ -46,12 +48,36 @@ function Fila({ x, onClick, derecha }: { x: Pozo | Instalacion; onClick: () => v
   );
 }
 
-function Inicio({ datos, favoritos, recientes, onElegir, onSacarFav }: { datos: Datos; favoritos: string[]; recientes: string[]; onElegir: (k: string) => void; onSacarFav: (k: string) => void }) {
+function Empresa({ acceso, datos, onNuevo, aviso }: { acceso: Acceso; datos: Datos; onNuevo: () => void; aviso: string | null }) {
+  const e = acceso.empresa; if (!e) return null;
+  const propios = datos.instalaciones.filter((x) => x.propio);
+  const pend = propios.filter((x) => x.propio!.estado === "pendiente").length;
+  const cola = puntosEnCola();
+  return (
+    <section className="rounded-xl border-2 p-3 flex flex-col gap-2" style={{ borderColor: e.color }}>
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-[15px] font-bold" style={{ color: e.color }}>{e.nombre}</h2>
+        {e.rol === "admin" && <a href={urlPortal()} className="text-[12px] underline text-tenue">Administrar empresa</a>}
+      </div>
+      <p className="text-[13px] text-tenue">{propios.length.toLocaleString("es-AR")} puntos propios de la empresa en el mapa{pend ? ` · ${pend} pendientes` : ""}{cola ? ` · ${cola} sin enviar (falta señal)` : ""}. Se buscan igual que un pozo.</p>
+      {e.estado !== "activa" && <p className="text-[13px] text-[#b37a00]">La empresa todavía no está activa: los puntos los ves solo vos.</p>}
+      {(e.rol === "admin" || e.rol === "carga") && (
+        <button onClick={onNuevo} className="flex items-center justify-center gap-2 py-2.5 rounded-lg text-white text-[15px] font-semibold" style={{ background: e.color }}>
+          <MapPin className="w-4 h-4" /> Agregar punto acá
+        </button>
+      )}
+      {aviso && <p className="text-[13px]">{aviso}</p>}
+    </section>
+  );
+}
+
+function Inicio({ datos, favoritos, recientes, onElegir, onSacarFav, empresa }: { datos: Datos; favoritos: string[]; recientes: string[]; onElegir: (k: string) => void; onSacarFav: (k: string) => void; empresa?: React.ReactNode }) {
   const fav = favoritos.map((k) => datos.porClave.get(k)).filter(Boolean) as (Pozo | Instalacion)[];
   const rec = recientes.filter((k) => !favoritos.includes(k)).map((k) => datos.porClave.get(k)).filter(Boolean).slice(0, 10) as (Pozo | Instalacion)[];
   const m = datos.meta?.fuentes;
   return (
     <div className="flex flex-col gap-4 pb-6">
+      {empresa}
       <section>
         <h2 className="flex items-center gap-2 text-[13px] uppercase tracking-wide text-tenue font-semibold mb-1.5"><Star className="w-4 h-4" /> Favoritos</h2>
         {fav.length ? (
@@ -91,6 +117,15 @@ export default function App({ acceso }: { acceso: Acceso }) {
   const [verCuenta, setVerCuenta] = useState(ruta === "/cuenta" || ruta === "/admin");
   const abrirCuenta = (si: boolean) => { setVerCuenta(si); history.replaceState(null, "", si ? "/cuenta" : "/"); };
   const enLinea = useEnLinea();
+  const [nuevoPunto, setNuevoPunto] = useState(false);
+  const [avisoPunto, setAvisoPunto] = useState<string | null>(null);
+  // Puntos cargados sin señal: se envían al abrir la app o cuando vuelve la conexión
+  useEffect(() => {
+    if (!acceso.empresa) return;
+    const ir = () => enviarCola().then((n) => n && setAvisoPunto(`Se enviaron ${n} puntos que estaban guardados sin señal.`));
+    ir(); addEventListener("online", ir);
+    return () => removeEventListener("online", ir);
+  }, [acceso.empresa]);
   const [q, setQ] = useState("");
   const [sel, setSel] = useState<string | null>(null);
   const [satelite, setSatelite] = useState(navigator.onLine);
@@ -190,7 +225,8 @@ export default function App({ acceso }: { acceso: Acceso }) {
       <aside className="order-2 md:order-1 md:w-[420px] md:h-full h-[48%] flex flex-col bg-fondo border-t md:border-t-0 md:border-r border-linea">
         <div className="p-3 pb-2 flex flex-col gap-2 border-b border-linea">
           <div className="flex items-center justify-between">
-            <h1 className="text-[18px] font-bold tracking-tight">Picada<span className="text-acento">GPS</span> <span className="hidden sm:inline text-[12px] font-normal text-tenue">· cuenca neuquina</span></h1>
+            <h1 className="text-[18px] font-bold tracking-tight">Picada<span className="text-acento">GPS</span> {acceso.empresa ? <span className="ml-1 text-[12px] font-semibold px-1.5 py-0.5 rounded text-white align-middle" style={{ background: acceso.empresa.color }}>{acceso.empresa.nombre}</span>
+              : <span className="hidden sm:inline text-[12px] font-normal text-tenue">· cuenca neuquina</span>}</h1>
             <span className="flex items-center gap-2">
               {!enLinea && <span className="flex items-center gap-1 text-[12px] text-tenue"><WifiOff className="w-4 h-4" /> Sin señal</span>}
               <button onClick={compartirWhatsApp} aria-label="Compartir la app por WhatsApp" title="Compartir por WhatsApp" className="p-1.5 rounded-md border border-linea text-acento">
@@ -254,7 +290,8 @@ export default function App({ acceso }: { acceso: Acceso }) {
                 onElegir={(k) => elegir(k)} onVer={(lat, lon, zoom) => setCentrar({ lat, lon, zoom, n: Date.now() })}
                 yo={yo} onUbicarme={() => ubicarme()} ubicando={ubicando}
                 linea={linea} onLinea={(desde, tipo) => setLinea({ desde, tipo, n: Date.now() })} />
-            ) : <Inicio datos={datos} favoritos={favs.lista} recientes={recs.lista} onElegir={(k) => elegir(k)} onSacarFav={favs.sacar} />}
+            ) : <Inicio datos={datos} favoritos={favs.lista} recientes={recs.lista} onElegir={(k) => elegir(k)} onSacarFav={favs.sacar}
+                empresa={<Empresa acceso={acceso} datos={datos} onNuevo={() => { setAvisoPunto(null); setNuevoPunto(true); }} aviso={avisoPunto} />} />}
           {avisoGps && <p className="text-[13px] text-alerta mt-2">{avisoGps}</p>}
         </div>
       </aside>
@@ -276,6 +313,10 @@ export default function App({ acceso }: { acceso: Acceso }) {
         </div>
       </main>
       {datos && !verCuenta && <Novedad datos={datos} />}
+      {nuevoPunto && acceso.empresa && (
+        <PuntoNuevo empresa={acceso.empresa.nombre} color={acceso.empresa.color} rol={acceso.empresa.rol} yo={yo}
+          onCerrar={(msj) => { setNuevoPunto(false); if (msj) setAvisoPunto(msj); }} />
+      )}
       {verCuenta && <Cuenta a={acceso} conAdmin={ruta === "/admin" && acceso.rol === "admin"} onCerrar={() => abrirCuenta(false)} />}
     </div>
   );

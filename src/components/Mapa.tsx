@@ -132,7 +132,7 @@ export default function Mapa({ datos, seleccion, linea, yo, satelite, onElegir, 
           },
           inst: {
             type: "geojson",
-            data: { type: "FeatureCollection", features: datos.instalaciones.map((p) => ({ type: "Feature", properties: { k: p.k }, geometry: { type: "Point", coordinates: [p.lon, p.lat] } })) }
+            data: { type: "FeatureCollection", features: datos.instalaciones.map((p) => ({ type: "Feature", properties: { k: p.k, c: p.propio ? (p.propio.estado === "pendiente" ? "#e0a100" : p.propio.color) : "" }, geometry: { type: "Point", coordinates: [p.lon, p.lat] } })) }
           },
           salida: { type: "geojson", data: vacio }
         },
@@ -164,7 +164,11 @@ export default function Mapa({ datos, seleccion, linea, yo, satelite, onElegir, 
           },
           {
             id: "inst", type: "circle", source: "inst",
-            paint: { "circle-color": "#1d4ed8", "circle-stroke-color": "#ffffff", "circle-stroke-width": 1.5, "circle-radius": ["interpolate", ["linear"], ["zoom"], 7, 2.5, 14, 7] }
+            paint: {
+              "circle-color": ["case", [">", ["length", ["get", "c"]], 0], ["get", "c"], "#1d4ed8"], "circle-stroke-color": "#ffffff",
+              "circle-stroke-width": ["case", [">", ["length", ["get", "c"]], 0], 2.5, 1.5],
+              "circle-radius": ["interpolate", ["linear"], ["zoom"], 7, ["case", [">", ["length", ["get", "c"]], 0], 4, 2.5], 14, ["case", [">", ["length", ["get", "c"]], 0], 9, 7]]
+            }
           }
         ]
       }

@@ -47,7 +47,7 @@ const VENTAJAS = [
 ];
 
 /** Botón oficial de Google; si no carga (bloqueador, sin red), queda el botón propio con redirección */
-function BotonGoogle() {
+export function BotonGoogle() {
   const ref = useRef<HTMLDivElement>(null);
   const [oficial, setOficial] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);

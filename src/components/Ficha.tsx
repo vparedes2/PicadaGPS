@@ -91,7 +91,8 @@ export default function Ficha({ x, datos, favorito, onFavorito, onCerrar, onEleg
   const textoCompartir = () => {
     const l: string[] = [];
     l.push(`📍 *${nombre}*`);
-    l.push(esPozo(x) ? `Pozo ${x.tipo.toLowerCase()} · ${x.area} · ${x.empresa}` : `${x.tipo || "Instalación"} · ${x.area}${x.operador ? ` · ${x.operador}` : ""}`);
+    l.push(esPozo(x) ? `Pozo ${x.tipo.toLowerCase()} · ${x.area} · ${x.empresa}` : `${x.tipo || "Instalación"} · ${x.area}${x.operador && !x.propio ? ` · ${x.operador}` : ""}`);
+    if (!esPozo(x) && x.propio?.nota) l.push(`📝 ${x.propio.nota}`);
     l.push(`Coordenadas: ${dec}`);
     l.push(`GPS: ${dms}`);
     l.push("");
@@ -137,6 +138,12 @@ export default function Ficha({ x, datos, favorito, onFavorito, onCerrar, onEleg
             <div><dt className="text-tenue text-[12px]">Extracción</dt><dd>{x.extraccion}</dd></div>
             <div><dt className="text-tenue text-[12px]">Recurso</dt><dd>{x.recurso}{x.inicio ? ` · perforado ${x.inicio.slice(0, 4)}` : ""}</dd></div>
           </>
+        ) : x.propio ? (
+          <div className="col-span-2 rounded-lg border-2 p-3" style={{ borderColor: x.propio.estado === "pendiente" ? "#e0a100" : x.propio.color }}>
+            <dt className="text-[12px] font-semibold" style={{ color: x.propio.estado === "pendiente" ? "#b37a00" : x.propio.color }}>
+              Punto propio de {x.propio.empresa}{x.propio.estado === "pendiente" ? " · pendiente de aprobación" : ""}</dt>
+            <dd className="mt-0.5">{x.propio.nota || "Sin nota."}</dd>
+          </div>
         ) : (
           <div className="col-span-2"><dt className="text-tenue text-[12px]">Operadora</dt><dd>{x.operador || "Sin dato"}</dd></div>
         )}

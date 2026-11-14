@@ -1,6 +1,7 @@
 /** Panel de la cuenta: estado del plan, renovar, pagos hechos, créditos, administración y salir. */
 import { useEffect, useState } from "react";
-import { X, LogOut, Shield, Share2 } from "lucide-react";
+import { X, LogOut, Shield, Share2, Building2 } from "lucide-react";
+import { urlPortal } from "../lib/empresa";
 import { compartirWhatsApp } from "../lib/compartir";
 import { misPagos, salir, diaLargo, diasRestantes, pesos, diasSinSenalRestantes, DIAS_SIN_SENAL, type Acceso } from "../lib/cuenta";
 import { reiniciarDatos } from "../lib/datos";
@@ -11,7 +12,7 @@ import { Novedades } from "./Novedades";
 export const textoEstado = (a: Acceso) =>
   a.estado === "admin" ? "Administrador"
   : a.estado === "prueba" ? (diasRestantes(a.hasta) <= 1 ? "Prueba gratis · último día" : `Prueba gratis · ${diasRestantes(a.hasta)} días`)
-  : a.estado === "activo" ? `Plan ${a.plan ?? ""} · hasta ${new Date(a.hasta!).toLocaleDateString("es-AR")}`
+  : a.estado === "activo" ? `${a.plan === "empresa" && a.empresa ? "Plan Empresa" : `Plan ${a.plan ?? ""}`} · hasta ${new Date(a.hasta!).toLocaleDateString("es-AR")}`
   : "Sin acceso";
 
 export default function Cuenta({ a, onCerrar, conAdmin = false }: { a: Acceso; onCerrar: () => void; conAdmin?: boolean }) {
@@ -42,7 +43,15 @@ export default function Cuenta({ a, onCerrar, conAdmin = false }: { a: Acceso; o
           )}
         </section>
 
-        {a.estado !== "admin" && (
+        {a.empresa && (
+          <section className="rounded-lg border-2 bg-panel p-3 text-[14px]" style={{ borderColor: a.empresa.color }}>
+            <p className="font-semibold" style={{ color: a.empresa.color }}>{a.empresa.nombre}</p>
+            <p className="text-tenue">{({ admin: "Administrador", carga: "Carga puntos", lectura: "Solo consulta" } as Record<string, string>)[a.empresa.rol]}{a.plan === "empresa" ? " · tu acceso lo cubre la empresa" : ""}</p>
+            {a.empresa.rol === "admin" && <a href={urlPortal()} className="mt-2 inline-flex items-center gap-2 text-acento font-semibold"><Building2 className="w-4 h-4" /> Administrar la empresa</a>}
+          </section>
+        )}
+
+        {a.estado !== "admin" && a.plan !== "empresa" && (
           <section>
             <h2 className="text-[13px] uppercase tracking-wide text-tenue font-semibold mb-1.5">{a.estado === "prueba" ? "Elegí un plan" : "Renovar"}</h2>
             {navigator.onLine ? <Planes email={a.email} /> : <p className="text-[14px] text-tenue">Necesitás señal para pagar.</p>}
