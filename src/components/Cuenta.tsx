@@ -6,6 +6,7 @@ import { misPagos, salir, diaLargo, diasRestantes, pesos, diasSinSenalRestantes,
 import { reiniciarDatos } from "../lib/datos";
 import Planes from "./Planes";
 import Admin from "./Admin";
+import { Novedades } from "./Novedades";
 
 export const textoEstado = (a: Acceso) =>
   a.estado === "admin" ? "Administrador"
@@ -61,6 +62,8 @@ export default function Cuenta({ a, onCerrar, conAdmin = false }: { a: Acceso; o
             </ul>
           </section>
         )}
+
+        <Novedades />
 
         <div className="flex flex-col gap-2">
           {a.rol === "admin" && (

@@ -12,7 +12,7 @@ export default function Planes({ email, onRevisar }: { email?: string; onRevisar
   const [yendo, setYendo] = useState<string | null>(null);
   const [pedido, setPedido] = useState<string | null>(null);
 
-  useEffect(() => { consultarPrecios().then(setP).catch((e) => setError(e.message)); }, []);
+  useEffect(() => { consultarPrecios().then((x) => { if (x?.planes?.trimestral && x?.planes?.anual) setP(x); else setError("No se pudo consultar el precio. Probá de nuevo en un rato."); }).catch((e) => setError(e.message)); }, []);
 
   const pedir = async (plan: "trimestral" | "anual") => {
     if (!p) return;
