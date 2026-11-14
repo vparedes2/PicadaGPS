@@ -309,14 +309,36 @@ def overpass(q, timeout=300):
 ZONA_CAMINOS = (-70.4, -39.3, -67.8, -36.9)
 
 
+def zonas_otras_provincias():
+    """Cuadros de medio grado con pozos de Río Negro, Mendoza y La Pampa que quedan fuera de la zona de Neuquén."""
+    p = os.path.join(FUENTE, "pozos-otras-provincias-2025.csv")
+    if not os.path.exists(p):
+        return []
+    W, S, E, N = ZONA_CAMINOS
+    cuenta = {}
+    for r in csv.DictReader(open(p, encoding="utf-8")):
+        try:
+            x, y = float(r["coordenadax"]), float(r["coordenaday"])
+        except ValueError:
+            continue
+        if not (-71.6 <= x <= -63.0 and -42.5 <= y <= -32.0) or (W <= x <= E and S <= y <= N):
+            continue
+        k = (math.floor(x * 2) / 2, math.floor(y * 2) / 2)
+        cuenta[k] = cuenta.get(k, 0) + 1
+    return [(x, y, x + 0.5, y + 0.5) for (x, y), n in sorted(cuenta.items()) if n >= 10]
+
+
 def caminos_osm():
     """Caminos de yacimiento: en OpenStreetMap figuran como 'unclassified', 'track' o 'service'.
-    Se dejan afuera las huellas de peor categoría (grade4/grade5), estacionamientos y accesos a casas."""
+    Se dejan afuera las huellas de peor categoría (grade4/grade5), estacionamientos y accesos a casas.
+    Zona petrolera de Neuquén más los cuadros con pozos de Río Negro, Mendoza y La Pampa."""
     W, S, E, N = ZONA_CAMINOS
-    # En cuatro partes para no saturar el servidor
+    # En partes para no saturar el servidor
     elementos, vistos = [], set()
     mx, my = (W + E) / 2, (S + N) / 2
-    for (w, s_, e, n) in [(W, S, mx, my), (mx, S, E, my), (W, my, mx, N), (mx, my, E, N)]:
+    otras = zonas_otras_provincias()
+    print(f"  caminos: 4 cuadros de Neuquén + {len(otras)} de otras provincias")
+    for i, (w, s_, e, n) in enumerate([(W, S, mx, my), (mx, S, E, my), (W, my, mx, N), (mx, my, E, N)] + otras):
         q = f"""[out:json][timeout:240];
 (
   way["highway"="unclassified"]({s_},{w},{n},{e});
@@ -324,7 +346,14 @@ def caminos_osm():
   way["highway"="service"]["service"!~"driveway|parking_aisle|drive-through"]({s_},{w},{n},{e});
 );
 out geom tags;"""
-        for el in overpass(q).get("elements", []):
+        try:
+            els = overpass(q).get("elements", [])
+        except Exception as ex:
+            if i < 4:
+                raise
+            print(f"    cuadro {w},{s_} sin respuesta: {ex}")
+            continue
+        for el in els:
             if el.get("id") not in vistos:
                 vistos.add(el.get("id")); elementos.append(el)
     feats = []
