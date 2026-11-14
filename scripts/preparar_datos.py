@@ -23,7 +23,8 @@ SALIDA = os.path.join(RAIZ, "datos")
 LOCAL = "--local" in sys.argv
 # El monitor ambiental ya consulta el GeoServer provincial y expone sus capas limpias
 MONITOR = os.environ.get("MONITOR_URL", "https://monitorambiental.victorparedes.ar")
-BBOX = (-71.2, -41.2, -67.8, -36.0)  # oeste, sur, este, norte: Neuquén con margen
+BBOX = (-71.2, -41.2, -67.8, -36.0)  # oeste, sur, este, norte: Neuquén con margen (filtro de pozos del padrón)
+BBOX_RUTAS = (-71.6, -42.0, -63.3, -32.0)  # rutas: Neuquén, Río Negro, Mendoza y La Pampa
 UA = {"User-Agent": "PicadaGPS (datos publicos)"}
 
 
@@ -144,10 +145,56 @@ def preparar_pozos():
                 cod("extraccion", r["tipoextraccion"]), round(lat, 6), round(lon, 6),
                 int(r["idpozo"]) if r["idpozo"].isdigit() else None, (r["adjiv_fecha_inicio_perf"] or "")[:10] or None,
             ])
+    otras = sumar_otras_provincias(filas, cod)
     marca = os.path.join(FUENTE, "pozos-capitulo-iv.fecha")
     fecha = open(marca).read().strip() if os.path.exists(marca) else datetime.fromtimestamp(os.path.getmtime(ruta), timezone.utc).date().isoformat()
     return {"campos": ["sigla", "area", "empresa", "yacimiento", "tipo", "estado", "recurso", "extraccion", "lat", "lon", "idpozo", "inicio_perf"],
-            "dic": dic, "filas": filas}, fecha
+            "dic": dic, "filas": filas}, fecha, otras
+
+
+# Río Negro, Mendoza y La Pampa: listado de pozos cargados por las operadoras (Secretaría de Energía, datos a 2025).
+# No trae el estado del pozo; la sigla se arma como en el padrón: EMPRESA.PROVINCIA.SIGLA
+OTRAS = {"Rio Negro": "RN", "Mendoza": "Mz", "La Pampa": "LP"}
+NOMBRE_PROV = {"Rio Negro": "Río Negro", "Mendoza": "Mendoza", "La Pampa": "La Pampa"}
+
+
+def _titulo(t):
+    t = (t or "").strip().capitalize()
+    return t or None
+
+
+def sumar_otras_provincias(filas, cod):
+    ruta = os.path.join(FUENTE, "pozos-otras-provincias-2025.csv")
+    if not os.path.exists(ruta):
+        return {}
+    vistos, cuenta = set(), {}
+    with open(ruta, encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            prov = r["provincia"]
+            if prov not in OTRAS:
+                continue
+            try:
+                lon, lat = float(r["coordenadax"]), float(r["coordenaday"])
+            except ValueError:
+                continue
+            if not (-71.6 <= lon <= -63.0 and -42.5 <= lat <= -32.0):
+                continue
+            sg = r["sigla"].strip()
+            sigla = sg if "." in sg else f'{r["idempresa"].strip()}.{OTRAS[prov]}.{sg}'
+            if sigla in vistos:
+                continue
+            vistos.add(sigla)
+            sub = (r["subclasificacion"] or "").upper()
+            tipo = "Inyector de agua" if "INYECTOR" in sub else _titulo(r["subclasificacion"]) or _titulo(r["clasificacion"]) or "Sin dato"
+            estado = "Abandonado" if (r["adjiv_fecha_abandono"] or "").strip() else "Sin dato (listado 2025)"
+            filas.append([
+                sigla, cod("area", r["areapermisoconcesion"].strip().upper()), cod("empresa", r["idempresa"]), cod("yacimiento", r["areayacimiento"].strip().upper()),
+                cod("tipo", tipo), cod("estado", estado), cod("recurso", _titulo(r["tipo_reservorio"]) or "Sin dato"), cod("extraccion", "Sin dato"),
+                round(lat, 6), round(lon, 6), int(r["idpozo"]) if r["idpozo"].isdigit() else None, (r["adjiv_fecha_inicio"] or "")[:10] or None,
+            ])
+            cuenta[NOMBRE_PROV[prov]] = cuenta.get(NOMBRE_PROV[prov], 0) + 1
+    print(f"  otras provincias (listado 2025): {cuenta}")
+    return cuenta
 
 
 # ---------------------------------------------------------------- capas provinciales
@@ -201,7 +248,7 @@ def rutas_ign():
     for capa in elegidas:
         q = urllib.parse.urlencode({"service": "WFS", "version": "1.1.0", "request": "GetFeature", "typeName": capa,
                                     "outputFormat": "application/json", "srsName": "EPSG:4326",
-                                    "bbox": f"{BBOX[0]},{BBOX[1]},{BBOX[2]},{BBOX[3]},EPSG:4326"})
+                                    "bbox": f"{BBOX_RUTAS[0]},{BBOX_RUTAS[1]},{BBOX_RUTAS[2]},{BBOX_RUTAS[3]},EPSG:4326"})
         fc = json.loads(descargar(f"{IGN}?{q}", 240))
         jur = "Nacional" if "nacional" in capa else "Provincial" if "provincial" in capa else ""
         for f in fc.get("features", []):
@@ -220,7 +267,7 @@ def rutas_ign():
 
 def rutas_osm():
     q = f"""[out:json][timeout:240];
-way["highway"~"^(motorway|trunk|primary|secondary|tertiary)$"]({BBOX[1]},{BBOX[0]},{BBOX[3]},{BBOX[2]});
+way["highway"~"^(motorway|trunk|primary|secondary|tertiary)$"]({BBOX_RUTAS[1]},{BBOX_RUTAS[0]},{BBOX_RUTAS[3]},{BBOX_RUTAS[2]});
 out geom tags;"""
     d = overpass(q)
     feats = []
@@ -351,10 +398,12 @@ def main():
     os.makedirs(SALIDA, exist_ok=True)
     meta = {"generado": datetime.now(timezone.utc).isoformat(timespec="minutes"), "fuentes": {}}
 
-    pozos, f_pozos = preparar_pozos()
+    pozos, f_pozos, otras = preparar_pozos()
     guardar("pozos.json", pozos)
     ultimo = max((f[11] for f in pozos["filas"] if f[11]), default=None)
-    meta["fuentes"]["pozos"] = {"fecha": f_pozos, "cantidad": len(pozos["filas"]), "ultimo_inicio_perforacion": ultimo}
+    meta["fuentes"]["pozos"] = {"fecha": f_pozos, "cantidad": len(pozos["filas"]) - sum(otras.values()), "ultimo_inicio_perforacion": ultimo}
+    if otras:
+        meta["fuentes"]["pozos_otras"] = {"fecha": "2025-10", "cantidad": sum(otras.values()), "provincias": otras}
 
     inst, f_inst, o_inst = con_respaldo("instalaciones.json", capa_monitor("instalaciones"))
     inst = preparar_instalaciones(inst)

@@ -103,7 +103,7 @@ export default function Ingreso({ aviso }: { aviso?: ReactNode }) {
               <Share2 className="w-4 h-4 text-acento" />
             </button>
           </div>
-          <p className="text-[15px] text-tenue mt-1">Encontrá cualquier pozo o locación de Neuquén y llegá, aunque no haya señal.</p>
+          <p className="text-[15px] text-tenue mt-1">Encontrá cualquier pozo o locación de Neuquén, Río Negro, Mendoza y La Pampa, y llegá aunque no haya señal.</p>
         </div>
 
         {/* Demo: búsqueda de un pozo y el mapa que vuela hasta la locación */}

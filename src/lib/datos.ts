@@ -12,7 +12,7 @@ export interface Pozo {
   recurso: string; extraccion: string; lat: number; lon: number; idpozo: number | null; inicio: string | null;
 }
 export interface Instalacion { k: string; nombre: string; tipo: string; area: string; operador: string; lat: number; lon: number }
-export interface Meta { generado: string; fuentes: Record<string, { fecha: string | null; cantidad: number; origen?: string; ultimo_inicio_perforacion?: string | null }> }
+export interface Meta { generado: string; fuentes: Record<string, { fecha: string | null; cantidad: number; origen?: string; ultimo_inicio_perforacion?: string | null; provincias?: Record<string, number> }> }
 
 export interface Datos {
   pozos: Pozo[]; instalaciones: Instalacion[]; rutas: Ruta[]; caminos: Ruta[];

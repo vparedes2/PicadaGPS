@@ -21,7 +21,7 @@ export function Marco({ children, pie }: { children: ReactNode; pie?: ReactNode 
         <div className="text-center">
           <img src="/icono.svg" alt="" className="w-16 h-16 mx-auto mb-2" />
           <h1 className="text-[24px] font-bold tracking-tight">Picada<span className="text-acento">GPS</span></h1>
-          <p className="text-[14px] text-tenue">Pozos y locaciones de Neuquén, sin señal.</p>
+          <p className="text-[14px] text-tenue">Pozos y locaciones de la cuenca neuquina, sin señal.</p>
         </div>
         {children}
         <div className="flex items-center justify-center gap-4 text-[13px] text-tenue">

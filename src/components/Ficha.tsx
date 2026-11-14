@@ -106,7 +106,7 @@ export default function Ficha({ x, datos, favorito, onFavorito, onCerrar, onEleg
     if (ref.ruta && ref.ruta.d > 300) l.push(`🚗 Waze a la salida de la ruta: ${enlaceWaze(ref.ruta.lat, ref.ruta.lon)}`);
     l.push(`📲 Ver en PicadaGPS: ${enlaceApp(x.k)}`);
     l.push("");
-    l.push("_Ubicá cualquier pozo de Neuquén sin señal con *PicadaGPS.ar* · 7 días gratis_");
+    l.push("_Ubicá pozos de la cuenca neuquina sin señal con *PicadaGPS.ar* · 7 días gratis_");
     return l.join("\n");
   };
   const compartir = async (conFoto: boolean) => {

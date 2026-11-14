@@ -11,6 +11,7 @@ import { useLista } from "./lib/guardado";
 import { diasRestantes, type Acceso } from "./lib/cuenta";
 import Cuenta, { textoEstado } from "./components/Cuenta";
 import AvisoVence from "./components/AvisoVence";
+import Novedad from "./components/Novedad";
 
 function useEnLinea() {
   const [en, setEn] = useState(navigator.onLine);
@@ -64,7 +65,8 @@ function Inicio({ datos, favoritos, recientes, onElegir, onSacarFav }: { datos: 
       <section className="rounded-lg border border-linea bg-panel p-3 text-[13px] leading-relaxed">
         <h2 className="flex items-center gap-2 font-semibold mb-1"><Info className="w-4 h-4" /> Datos cargados en este teléfono</h2>
         <ul className="text-tenue">
-          <li>{(m?.pozos?.cantidad ?? datos.pozos.length).toLocaleString("es-AR")} pozos · padrón al {fecha(m?.pozos?.fecha)}
+          {m?.pozos_otras && <li>{m.pozos_otras.cantidad.toLocaleString("es-AR")} pozos de {Object.keys(m.pozos_otras.provincias ?? {}).join(", ").replace(/, ([^,]*)$/, " y $1")} · datos 2025</li>}
+          <li>{(m?.pozos?.cantidad ?? datos.pozos.length).toLocaleString("es-AR")} pozos de Neuquén · padrón al {fecha(m?.pozos?.fecha)}
             {m?.pozos?.ultimo_inicio_perforacion && <> · el más nuevo empezó a perforarse el {fecha(m.pozos.ultimo_inicio_perforacion)} (las operadoras declaran con unos meses de atraso)</>}</li>
           <li>{datos.instalaciones.length.toLocaleString("es-AR")} instalaciones · {fecha(m?.instalaciones?.fecha)}</li>
           {m?.areas && <li>{m.areas.cantidad} áreas de concesión · {fecha(m.areas.fecha)}</li>}
@@ -170,7 +172,7 @@ export default function App({ acceso }: { acceso: Acceso }) {
       <aside className="order-2 md:order-1 md:w-[420px] md:h-full h-[48%] flex flex-col bg-fondo border-t md:border-t-0 md:border-r border-linea">
         <div className="p-3 pb-2 flex flex-col gap-2 border-b border-linea">
           <div className="flex items-center justify-between">
-            <h1 className="text-[18px] font-bold tracking-tight">Picada<span className="text-acento">GPS</span> <span className="hidden sm:inline text-[12px] font-normal text-tenue">· pozos de Neuquén</span></h1>
+            <h1 className="text-[18px] font-bold tracking-tight">Picada<span className="text-acento">GPS</span> <span className="hidden sm:inline text-[12px] font-normal text-tenue">· cuenca neuquina</span></h1>
             <span className="flex items-center gap-2">
               {!enLinea && <span className="flex items-center gap-1 text-[12px] text-tenue"><WifiOff className="w-4 h-4" /> Sin señal</span>}
               <button onClick={compartirWhatsApp} aria-label="Compartir la app por WhatsApp" title="Compartir por WhatsApp" className="p-1.5 rounded-md border border-linea text-acento">
@@ -240,6 +242,7 @@ export default function App({ acceso }: { acceso: Acceso }) {
           </button>
         </div>
       </main>
+      {datos && !verCuenta && <Novedad datos={datos} />}
       {verCuenta && <Cuenta a={acceso} conAdmin={ruta === "/admin" && acceso.rol === "admin"} onCerrar={() => abrirCuenta(false)} />}
     </div>
   );

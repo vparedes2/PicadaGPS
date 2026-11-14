@@ -84,3 +84,4 @@ button { cursor: pointer; }
   90% { opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .google-latido, .google-mano { animation: none; } .google-mano { transform: rotate(-14deg); } }
+@keyframes aparecer { from { opacity: 0; transform: translateY(16px) scale(.98); } to { opacity: 1; transform: none; } }
