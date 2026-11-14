@@ -320,8 +320,12 @@ def overpass(q, timeout=300):
 ZONA_CAMINOS = (-70.4, -39.3, -67.8, -36.9)
 
 
+CAMINOS_PROVINCIAS = {"Rio Negro"}
+
+
 def zonas_otras_provincias():
-    """Cuadros de medio grado con pozos de Río Negro, Mendoza y La Pampa que quedan fuera de la zona de Neuquén."""
+    """Cuadros de medio grado con pozos de otras provincias que quedan fuera de la zona de Neuquén.
+    Por ahora solo Río Negro (sumar "Mendoza" o "La Pampa" a CAMINOS_PROVINCIAS cuando haga falta)."""
     p = os.path.join(FUENTE, "pozos-otras-provincias-2025.csv")
     if not os.path.exists(p):
         return []
@@ -331,6 +335,8 @@ def zonas_otras_provincias():
         try:
             x, y = float(r["coordenadax"]), float(r["coordenaday"])
         except ValueError:
+            continue
+        if r["provincia"].strip() not in CAMINOS_PROVINCIAS:
             continue
         if not (-71.6 <= x <= -63.0 and -42.5 <= y <= -32.0) or (W <= x <= E and S <= y <= N):
             continue
