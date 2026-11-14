@@ -3,7 +3,7 @@ import { useState } from "react";
 import { X, MapPinned } from "lucide-react";
 import type { Datos } from "../lib/datos";
 
-const CLAVE = "picadagps.novedad.provincias-2025b";
+const CLAVE = "picadagps.novedad.provincias-2025c";
 
 export default function Novedad({ datos }: { datos: Datos }) {
   const otras = datos.meta?.fuentes?.pozos_otras;
@@ -29,7 +29,7 @@ export default function Novedad({ datos }: { datos: Datos }) {
           <li className="px-3 pt-1 text-[13px] text-tenue">Y siguen Neuquén con {n(nq)} pozos y {n(inst)} instalaciones.</li>
         </ul>
         <p className="mt-3 text-[13px] text-tenue leading-snug">
-          Los pozos nuevos vienen del listado oficial de las operadoras (datos 2025). También sumamos las áreas de concesión de las tres provincias. Las instalaciones y los caminos de yacimiento por ahora son solo de Neuquén; los vamos a ir sumando.
+          Los pozos nuevos vienen del listado oficial de las operadoras (datos 2025). También sumamos las áreas de concesión de las tres provincias y los caminos de yacimiento de Río Negro (OpenStreetMap). Las instalaciones por ahora son solo de Neuquén; las vamos a ir sumando.
         </p>
         <button onClick={cerrar} className="mt-4 w-full py-3 rounded-xl bg-acento text-acento-texto font-semibold text-[15px]">Ver el mapa</button>
       </div>
