@@ -206,7 +206,7 @@ export default function App({ acceso }: { acceso: Acceso }) {
                             <Layers className="w-4 h-4 text-acento shrink-0" />
                             <span className="min-w-0">
                               <span className="block text-[15px] font-medium truncate">Área {n}</span>
-                              <span className="block text-[12px] text-tenue truncate">{areasInfo.get(n)?.pozos.toLocaleString("es-AR")} pozos · {areasInfo.get(n)?.operador} · ver en el mapa</span>
+                              <span className="block text-[12px] text-tenue truncate">{areasInfo.get(n)?.pozos.toLocaleString("es-AR")} pozos{areasInfo.get(n)?.operador ? ` · ${areasInfo.get(n)?.operador}` : ""} · ver en el mapa</span>
                             </span>
                           </button>
                         </li>

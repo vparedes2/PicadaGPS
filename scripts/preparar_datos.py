@@ -233,6 +233,16 @@ def preparar_areas(fc):
     return {"type": "FeatureCollection", "features": feats}
 
 
+def areas_mendoza():
+    """Áreas de Mendoza sacadas del mapa oficial 2024 de la Dirección de Hidrocarburos (GeoPDF de QGIS).
+    El nombre de cada área sale de los pozos del listado 2025 que caen adentro (o del rótulo del mapa)."""
+    p = os.path.join(FUENTE, "areas-mendoza-2024.geojson")
+    if not os.path.exists(p):
+        return []
+    with open(p, encoding="utf-8") as f:
+        return preparar_areas(json.load(f))["features"]
+
+
 # ---------------------------------------------------------------- rutas
 IGN = "https://wms.ign.gob.ar/geoserver/ows"
 
@@ -442,8 +452,11 @@ def main():
     areas, f_areas, o_areas = con_respaldo("areas.json", capa_monitor("areas"))
     if areas:
         areas = preparar_areas(areas)
+        mz = areas_mendoza()
+        areas["features"] += mz
         guardar("areas.geojson", areas)
-        meta["fuentes"]["areas"] = {"fecha": f_areas, "cantidad": len(areas["features"]), "origen": o_areas}
+        meta["fuentes"]["areas"] = {"fecha": f_areas, "cantidad": len(areas["features"]), "origen": o_areas,
+                                    "mendoza": len(mz)}
 
     rutas, f_rutas, o_rutas = con_respaldo("rutas.json", obtener_rutas)
     if rutas:
