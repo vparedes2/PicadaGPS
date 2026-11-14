@@ -3,8 +3,9 @@
  * Todos los valores son supuestos editables; se guardan en este navegador.
  */
 import { useMemo, useState } from "react";
-import { Copy, RotateCcw } from "lucide-react";
+import { Copy, RotateCcw, FileDown, Share2 } from "lucide-react";
 import { pesos } from "../lib/cuenta";
+import type { Cliente } from "../lib/informe";
 
 const BASE = {
   pesados: 10, livianos: 5,
@@ -35,7 +36,15 @@ const CAMPOS: { titulo: string; items: [keyof Vals, string, string?][] }[] = [
   { titulo: "Con PicadaGPS", items: [["reduccion", "Errores que se evitan", "%"], ["precioMes", "Costo por persona por mes", "$"]] }
 ];
 
-export default function Simulador() {
+const CLAVE_CLI = "picadagps.simulador.cliente";
+
+export default function Simulador({ whatsapp = "5492994603071" }: { whatsapp?: string }) {
+  const [cli, setCli] = useState<Cliente>(() => {
+    try { return { empresa: "", contacto: "", mail: "", telefono: "", ...JSON.parse(localStorage.getItem(CLAVE_CLI) || "{}") }; } catch { return { empresa: "", contacto: "", mail: "", telefono: "" }; }
+  });
+  const [pdf, setPdf] = useState<"" | "armando" | "listo" | string>("");
+  const cambiarCli = (k: keyof Cliente, x: string) => { const n = { ...cli, [k]: x }; setCli(n); try { localStorage.setItem(CLAVE_CLI, JSON.stringify(n)); } catch { /* nada */ } };
+  const mailOk = !cli.mail || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cli.mail);
   const [v, setV] = useState<Vals>(() => {
     try { return { ...BASE, ...JSON.parse(localStorage.getItem(CLAVE) || "{}") }; } catch { return BASE; }
   });
@@ -82,11 +91,48 @@ export default function Simulador() {
     `Con PicadaGPS (${r.personas} usuarios, ${pesos(Math.round(r.costoApp))} por mes), evitando el ${v.reduccion} % de los errores: ahorro estimado de *${pesos(Math.round(r.ahorro))} por mes*.`,
     `picadagps.ar`
   ].join("\n");
+  const informe = async (compartir: boolean) => {
+    if (!cli.empresa.trim() && !cli.contacto.trim()) { setPdf("Completá al menos la empresa o el nombre del contacto."); return; }
+    if (!mailOk) { setPdf("Revisá el mail del cliente."); return; }
+    setPdf("armando");
+    try {
+      const { crearInforme } = await import("../lib/informe");
+      const supuestos = CAMPOS.map((g) => ({ grupo: g.titulo, items: g.items.map(([k, etiqueta, unidad]) => ({ etiqueta, valor: `${(["gasoil", "horaHombre", "desgastePesado", "desgasteLiviano", "costoNpt", "costoIncidente", "penalidad", "precioMes"] as (keyof Vals)[]).includes(k) ? pesos(v[k]) : num(v[k], 2)}${unidad && !unidad.startsWith("$") ? " " + unidad : ""}` })) }));
+      const { blob, nombre } = await crearInforme(cli, r, supuestos, v.reduccion, whatsapp);
+      const archivo = new File([blob], nombre, { type: "application/pdf" });
+      const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
+      if (compartir && nav.share && nav.canShare?.({ files: [archivo] })) {
+        await nav.share({ files: [archivo], title: "Informe PicadaGPS", text: `Informe de costos por errores de ubicación · ${cli.empresa || cli.contacto}` }).catch(() => undefined);
+      } else {
+        const u = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = u; a.download = nombre; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000);
+      }
+      setPdf("listo");
+    } catch (e) { setPdf("No se pudo armar el PDF: " + (e as Error).message); }
+  };
+
   const copiar = async () => { try { await navigator.clipboard.writeText(resumen); setCopiado(true); setTimeout(() => setCopiado(false), 2000); } catch { /* nada */ } };
 
   return (
     <div className="flex flex-col gap-3">
       <p className="text-[13px] text-tenue">Estimación de lo que le cuesta a una empresa no encontrar las locaciones a la primera. Todos los valores son supuestos: cambialos con los datos del cliente. Se guardan en este navegador.</p>
+
+      <section className="rounded-xl border border-linea bg-panel p-3 flex flex-col gap-2">
+        <h3 className="text-[14px] font-semibold">Datos del cliente</h3>
+        {([["empresa", "Empresa", "text", "Transportes del Sur S.R.L."], ["contacto", "Nombre del contacto", "text", "Juan Pérez"], ["mail", "Mail", "email", "juan@empresa.com"], ["telefono", "Teléfono", "tel", "299 123 4567"]] as [keyof Cliente, string, string, string][]).map(([k, etq, tipo, ej]) => (
+          <label key={k} className="flex items-center justify-between gap-3 text-[13px]">
+            <span className="shrink-0">{etq}</span>
+            <input type={tipo} value={cli[k]} onChange={(e) => cambiarCli(k, e.target.value)} placeholder={ej}
+              className={`w-full max-w-[220px] px-2 py-1.5 rounded-md border bg-fondo ${k === "mail" && !mailOk ? "border-alerta" : "border-linea"}`} />
+          </label>
+        ))}
+        <div className="flex gap-2 mt-1">
+          <button onClick={() => informe(false)} disabled={pdf === "armando"} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg bg-acento text-acento-texto font-semibold text-[14px] disabled:opacity-60">
+            <FileDown className="w-4 h-4" /> {pdf === "armando" ? "Armando el PDF…" : "Descargar informe PDF"}
+          </button>
+          <button onClick={() => informe(true)} disabled={pdf === "armando"} title="Compartir el PDF (WhatsApp, mail…)" className="px-3 rounded-lg border border-linea disabled:opacity-60"><Share2 className="w-4 h-4" /></button>
+        </div>
+        {pdf && pdf !== "armando" && <p className={`text-[12px] ${pdf === "listo" ? "text-acento" : "text-alerta"}`}>{pdf === "listo" ? "Informe listo." : pdf}</p>}
+      </section>
 
       <section className="rounded-xl border-2 border-acento bg-panel p-3">
         <p className="text-[13px] text-tenue">Costo mensual de los errores de ubicación</p>

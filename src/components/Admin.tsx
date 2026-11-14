@@ -335,7 +335,7 @@ export default function Admin({ onCerrar }: { onCerrar: () => void }) {
                 <button key={p} onClick={() => setPestana(p)} className={`px-3 py-2 text-[14px] capitalize whitespace-nowrap ${pestana === p ? "border-b-2 border-acento font-semibold" : "text-tenue"}`}>{p}</button>
               ))}
             </div>
-            {pestana === "simulador" && <Simulador />}
+            {pestana === "simulador" && <Simulador whatsapp={d.config?.whatsapp} />}
             {pestana === "estadísticas" && est && <Estadisticas e={est} alVer={(f) => { setFiltro(f); setPestana("usuarios"); }} />}
             {pestana === "usuarios" && (
               <>
