@@ -8,6 +8,7 @@ import Ficha from "./components/Ficha";
 import { useDatos, esPozo, nombreDe, type Datos, type Pozo, type Instalacion } from "./lib/datos";
 import { buscarPorPartes, buscarAreas } from "./lib/buscar";
 import { rutaMasCercana } from "./lib/geo";
+import { zonaUrbana } from "./lib/urbano";
 import type { Linea } from "./components/Mapa";
 import { useLista } from "./lib/guardado";
 import { diasRestantes, type Acceso } from "./lib/cuenta";
@@ -181,7 +182,8 @@ export default function App({ acceso }: { acceso: Acceso }) {
   };
 
   const x = sel && datos ? datos.porClave.get(sel) ?? null : null;
-  const salida = useMemo(() => (x && datos ? rutaMasCercana(x.lat, x.lon, datos.rutas) : null), [x, datos]);
+  // En la ciudad no se dibuja la línea a la salida de ruta (Waze y Google Maps conocen las calles)
+  const salida = useMemo(() => (x && datos && (esPozo(x) || datos.pozoCerca(x.lat, x.lon, 800) || !zonaUrbana(x.lat, x.lon)) ? rutaMasCercana(x.lat, x.lon, datos.rutas) : null), [x, datos]);
   // Referencia dibujada en el mapa: por defecto la salida de la ruta; cambia al tocar otra en la ficha
   const [linea, setLinea] = useState<Linea | null>(null);
   useEffect(() => { setLinea(salida ? { desde: { lat: salida.lat, lon: salida.lon }, tipo: "ruta", n: 0 } : null); }, [salida]);

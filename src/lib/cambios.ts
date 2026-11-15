@@ -14,7 +14,8 @@ export const VERSIONES: Version[] = [
       "Puntos propios de cada empresa (tranqueras, pads, bases, picadas sin mapa) en el mapa, la búsqueda y sin señal.",
       "«Agregar punto acá» con el GPS del teléfono; sin señal queda guardado y se envía solo al volver la conexión.",
       "Importación de puntos desde KML de Google Earth, GPX, GeoJSON o planilla CSV.",
-      "Los usuarios de una empresa activa entran con plan Empresa."
+      "Los usuarios de una empresa activa entran con plan Empresa.",
+      "En las ciudades la ficha ya no muestra salida de ruta ni caminos de yacimiento: Waze y Google Maps llegan directo."
     ]
   },
   {
@@ -268,6 +269,10 @@ export const TECNICO: Record<string, [string, string][]> = {
     [
       "17:45",
       "Plan Empresa: tablas y funciones en Supabase, portal /empresas y empresas.picadagps.ar, puntos propios en la app, pestaña Empresas en Administración. Piloto: Transporte Bardone"
+    ],
+    [
+      "21:20",
+      "Zonas urbanas (Neuquén, Cipolletti, Roca, Añelo, Mendoza, Santa Rosa y otras): sin referencias de campo ni línea a la ruta, y sin calles de OpenStreetMap dibujadas como picadas; los pozos y lo que tiene pozos a menos de 800 m siguen como campo"
     ]
   ]
 };

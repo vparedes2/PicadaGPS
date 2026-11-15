@@ -6,6 +6,7 @@ import { aDMS, cardinal, distM, rumbo, rutaMasCercana, textoDist } from "../lib/
 import { copiar, enlaceGoogle, enlaceOtraApp, enlaceWaze, enlaceWazeVer, guardarZona, nombreOtraApp } from "../lib/navegar";
 import { compartirUbicacion, enlaceApp, enlaceSatelite } from "../lib/compartir";
 import { capturarSatelite } from "./Mapa";
+import { zonaUrbana } from "../lib/urbano";
 
 interface Props {
   x: Pozo | Instalacion;
@@ -64,22 +65,26 @@ export default function Ficha({ x, datos, favorito, onFavorito, onCerrar, onEleg
   const { lat, lon } = x;
   const [guardando, setGuardando] = useState<string | null>(null);
 
+  // En la ciudad Waze y Google Maps conocen todas las calles: no van las referencias de campo
+  // Los pozos y lo que tiene pozos a menos de 800 m siguen con la lógica de campo aunque estén al borde de una ciudad
+  const urbano = useMemo(() => (esPozo(x) || datos.pozoCerca(lat, lon, 800) ? null : zonaUrbana(lat, lon)), [x, datos, lat, lon]);
   const ref = useMemo(() => {
-    // Instalaciones con nombre más cercanas: así se orienta la gente en el campo
+    // Instalaciones con nombre más cercanas: así se orienta la gente en el campo (en la ciudad, solo si están a menos de 1,5 km)
     const inst = datos.instalaciones
       .filter((i) => i.k !== x.k)
       .map((i) => ({ i, d: distM(i.lat, i.lon, lat, lon) }))
+      .filter((r) => !urbano || r.d < 1500)
       .sort((a, b) => a.d - b.d).slice(0, 3);
     // Pozos en la misma locación (a menos de 80 m): sirve para confirmar que es el pad correcto
     const vecinos = esPozo(x)
       ? datos.pozos.filter((p) => p.k !== x.k && Math.abs(p.lat - lat) < 0.001 && Math.abs(p.lon - lon) < 0.0013 && distM(p.lat, p.lon, lat, lon) < 80)
       : [];
-    const ruta = rutaMasCercana(lat, lon, datos.rutas);
+    const ruta = urbano ? null : rutaMasCercana(lat, lon, datos.rutas);
     // Camino de yacimiento más cercano (OpenStreetMap), solo si está a menos de 5 km
-    const camino0 = rutaMasCercana(lat, lon, datos.caminos, 0.05);
+    const camino0 = urbano ? null : rutaMasCercana(lat, lon, datos.caminos, 0.05);
     const camino = camino0 && camino0.d < 5000 ? camino0 : null;
     return { inst, vecinos, ruta, camino };
-  }, [x, datos, lat, lon]);
+  }, [x, datos, lat, lon, urbano]);
 
   const activa = (p: { lat: number; lon: number }) => !!linea && Math.abs(linea.desde.lat - p.lat) < 1e-7 && Math.abs(linea.desde.lon - p.lon) < 1e-7;
   const desdeYo = yo ? { d: distM(yo.lat, yo.lon, lat, lon), r: rumbo(yo.lat, yo.lon, lat, lon) } : null;
@@ -96,7 +101,7 @@ export default function Ficha({ x, datos, favorito, onFavorito, onCerrar, onEleg
     l.push(`Coordenadas: ${dec}`);
     l.push(`GPS: ${dms}`);
     l.push("");
-    l.push("*Cómo llegar*");
+    l.push(urbano ? `*Cómo llegar* (zona urbana de ${urbano}: Waze y Google Maps llegan directo)` : "*Cómo llegar*");
     if (ref.ruta) l.push(`🛣️ A ${textoDist(ref.ruta.d)} al ${cardinal(rumbo(ref.ruta.lat, ref.ruta.lon, lat, lon))} de ${ref.ruta.nombre} (salida: ${ref.ruta.lat.toFixed(6)}, ${ref.ruta.lon.toFixed(6)})`);
     if (ref.camino) l.push(`🚙 Camino de yacimiento a ${textoDist(ref.camino.d)}`);
     for (const r of ref.inst.slice(0, 2)) l.push(`🏭 A ${textoDist(r.d)} al ${cardinal(rumbo(r.i.lat, r.i.lon, lat, lon))} de ${nombreDe(r.i)}`);
@@ -164,9 +169,15 @@ export default function Ficha({ x, datos, favorito, onFavorito, onCerrar, onEleg
       <a href={enlaceWazeVer(lat, lon)} target="_blank" rel="noopener" className="-mt-2 text-[13px] underline text-tenue">
         Ver el punto en Waze sin arrancar la navegación
       </a>
-      <p className="text-[12px] text-tenue -mt-2 leading-snug">
-        Waze y Google Maps no conocen muchas picadas: si el pozo queda lejos de un camino cargado, te dejan en el punto más cercano que conocen. Sin señal, Google Maps solo traza la ruta si descargaste la zona en «Mapas sin conexión». Para el último tramo usá las referencias de abajo.
-      </p>
+      {urbano ? (
+        <p className="-mt-1 rounded-lg border border-linea bg-panel px-3 py-2.5 text-[14px] leading-snug">
+          <b>Zona urbana de {urbano}.</b> Waze y Google Maps conocen las calles: navegá directo al punto.
+        </p>
+      ) : (
+        <p className="text-[12px] text-tenue -mt-2 leading-snug">
+          Waze y Google Maps no conocen muchas picadas: si el pozo queda lejos de un camino cargado, te dejan en el punto más cercano que conocen. Sin señal, Google Maps solo traza la ruta si descargaste la zona en «Mapas sin conexión». Para el último tramo usá las referencias de abajo.
+        </p>
+      )}
 
       <section className="flex flex-col gap-2" aria-label="Coordenadas">
         <BotonCopiar etiqueta="Coordenadas (decimal) · tocar para copiar" texto={dec} />
@@ -176,12 +187,12 @@ export default function Ficha({ x, datos, favorito, onFavorito, onCerrar, onEleg
           <Share2 className="w-5 h-5" /> {compartiendo ? "Preparando foto satelital…" : "Compartir ubicación por WhatsApp"}
         </button>
         <p className="text-[12px] text-tenue -mt-1 leading-snug">
-          Manda la foto satelital, las coordenadas, la salida de la ruta, las instalaciones cercanas y los enlaces a Waze y al mapa.{" "}
+          Manda la foto satelital, las coordenadas, {urbano ? "" : "la salida de la ruta, las instalaciones cercanas "}y los enlaces a Waze y al mapa.{" "}
           <button onClick={() => compartir(false)} className="underline">Enviar solo texto</button>
         </p>
       </section>
 
-      <section aria-label="Cómo llegar" className="flex flex-col gap-2">
+      {(!urbano || ref.inst.length > 0 || ref.vecinos.length > 0) && <section aria-label="Cómo llegar" className="flex flex-col gap-2">
         <h3 className="text-[13px] uppercase tracking-wide text-tenue font-semibold">Cómo llegar</h3>
         <p className="text-[12px] text-tenue -mb-1">Tocá una referencia para ver en el mapa la línea punteada hasta el {esPozo(x) ? "pozo" : "lugar"}.</p>
         <ul className="rounded-lg border border-linea bg-panel divide-y divide-linea">
@@ -207,7 +218,7 @@ export default function Ficha({ x, datos, favorito, onFavorito, onCerrar, onEleg
               extra={<button onClick={(e) => { e.stopPropagation(); onElegir(i.k); }} aria-label={`Abrir la ficha de ${i.nombre}`} className="text-[12px] px-2 py-1 rounded border border-linea flex items-center gap-1"><FileText className="w-3.5 h-3.5" /> Ficha</button>} />
           ))}
         </ul>
-        {!ref.ruta && <p className="text-[14px] text-tenue">Las rutas todavía no están cargadas en esta versión de los datos.</p>}
+        {!ref.ruta && !urbano && <p className="text-[14px] text-tenue">Las rutas todavía no están cargadas en esta versión de los datos.</p>}
         {ref.vecinos.length > 0 && (
           <div className="rounded-lg border border-linea bg-panel p-3">
             <p className="flex items-center gap-2 text-[14px] font-medium"><Layers className="w-4 h-4" /> En la misma locación: {ref.vecinos.length} pozo{ref.vecinos.length > 1 ? "s" : ""} más</p>
@@ -219,7 +230,7 @@ export default function Ficha({ x, datos, favorito, onFavorito, onCerrar, onEleg
           </div>
         )}
         <p className="text-[12px] text-tenue leading-snug">Distancias en línea recta, no por camino: por picada puede ser bastante más. Verificá el acceso con la operadora.</p>
-      </section>
+      </section>}
 
       <section aria-label="Desde mi ubicación" className="rounded-lg border border-linea bg-panel p-3">
         {desdeYo ? (

@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import { CACHE_DATOS, token, dispositivo, accesoGuardado } from "./cuenta";
 import { puntosParaApp } from "./empresa";
+import { zonaUrbana, grillaPozos } from "./urbano";
 import { compactar, normalizar, type Indexado } from "./buscar";
 import type { Ruta } from "./geo";
 
@@ -21,6 +22,8 @@ export interface Meta { generado: string; fuentes: Record<string, { fecha: strin
 
 export interface Datos {
   pozos: Pozo[]; instalaciones: Instalacion[]; rutas: Ruta[]; caminos: Ruta[];
+  /** ¿Hay algún pozo a menos de m metros? */
+  pozoCerca: (lat: number, lon: number, m: number) => boolean;
   areas: GeoJSON.FeatureCollection | null; rutasGeo: GeoJSON.FeatureCollection | null; caminosGeo: GeoJSON.FeatureCollection | null; meta: Meta | null;
   indice: Indexado[]; // pozos primero, instalaciones después (i >= pozos.length)
   porClave: Map<string, Pozo | Instalacion>;
@@ -117,7 +120,15 @@ async function cargar(): Promise<Datos> {
     return { nombre: f.properties.nombre || f.properties.tipo || sinNombre, coords: c, caja: [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)] };
   });
   const rutas = aLineas(rutasGeo, "Ruta");
-  const caminos = aLineas(caminosGeo, "Camino de yacimiento");
+  // En las ciudades OpenStreetMap trae las calles como «unclassified/service»: no son picadas, se sacan
+  const pozoCerca = grillaPozos(pozos);
+  const caminosCampo: any = caminosGeo && {
+    ...caminosGeo, features: (caminosGeo as any).features.filter((f: any) => {
+      const c = f.geometry.coordinates; const m = c[Math.floor(c.length / 2)];
+      return !zonaUrbana(m[1], m[0]) || pozoCerca(m[1], m[0], 1000);
+    })
+  };
+  const caminos = aLineas(caminosCampo, "Camino de yacimiento");
   const indice: Indexado[] = [
     ...pozos.map((x, i) => ({ i, codigo: compactar(x.sigla), texto: normalizar(`${x.area} ${x.yacimiento} ${x.empresa} ${x.tipo}`), tipo: x.tipo, activo: ACTIVOS.test(x.estado) })),
     ...instalaciones.map((x, j) => ({ i: pozos.length + j, codigo: compactar(x.nombre), texto: normalizar(`${x.tipo} ${x.area} ${x.operador} ${x.propio?.nota ?? ""}`), tipo: "Instalación", activo: true }))
@@ -125,7 +136,7 @@ async function cargar(): Promise<Datos> {
   const porClave = new Map<string, Pozo | Instalacion>();
   pozos.forEach((x) => porClave.set(x.k, x));
   instalaciones.forEach((x) => porClave.set(x.k, x));
-  return { pozos, instalaciones, rutas, caminos, areas, rutasGeo, caminosGeo, meta, indice, porClave };
+  return { pozos, instalaciones, rutas, caminos, areas, rutasGeo, caminosGeo: caminosCampo, meta, indice, porClave, pozoCerca };
 }
 
 let promesa: Promise<Datos> | null = null;
