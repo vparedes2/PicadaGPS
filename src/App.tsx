@@ -58,7 +58,7 @@ function Empresa({ acceso, datos, onNuevo, aviso, onElegir }: { acceso: Acceso; 
   return (
     <section className="rounded-xl border-2 p-3 flex flex-col gap-2" style={{ borderColor: e.color }}>
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-[15px] font-bold" style={{ color: e.color }}>{e.nombre}</h2>
+        <h2 className="flex items-center gap-2 text-[15px] font-bold" style={{ color: e.color }}>{e.logo && <img src={e.logo} alt="" className="h-8 w-auto max-w-[5rem] rounded bg-white p-0.5 object-contain" />}{e.nombre}</h2>
         {e.rol === "admin" && <a href={urlPortal()} className="text-[12px] underline text-tenue">Administrar empresa</a>}
       </div>
       <p className="text-[13px] text-tenue">{propios.length.toLocaleString("es-AR")} puntos propios de la empresa{pend ? ` · ${pend} pendientes` : ""}{cola ? ` · ${cola} sin enviar (falta señal)` : ""}. En el mapa se ven con este color <span className="inline-block w-2.5 h-2.5 rounded-full align-middle border-2 border-white" style={{ background: e.color }} />, se buscan por nombre igual que un pozo y aparecen como referencia en «Cómo llegar».</p>
@@ -70,6 +70,7 @@ function Empresa({ acceso, datos, onNuevo, aviso, onElegir }: { acceso: Acceso; 
           {propios.map((x) => <Fila key={x.k} x={x} onClick={() => onElegir(x.k)} />)}
         </ul>
       )}
+      {e.bienvenida && <p className="text-[14px] rounded-lg px-3 py-2 bg-panel border-l-4" style={{ borderColor: e.color }}>{e.bienvenida}</p>}
       {e.estado !== "activa" && <p className="text-[13px] text-[#b37a00]">La empresa todavía no está activa: los puntos los ves solo vos.</p>}
       {(e.rol === "admin" || e.rol === "carga") && (
         <button onClick={onNuevo} className="flex items-center justify-center gap-2 py-2.5 rounded-lg text-white text-[15px] font-semibold" style={{ background: e.color }}>
@@ -236,7 +237,7 @@ export default function App({ acceso }: { acceso: Acceso }) {
       <aside className="order-2 md:order-1 md:w-[420px] md:h-full h-[48%] flex flex-col bg-fondo border-t md:border-t-0 md:border-r border-linea">
         <div className="p-3 pb-2 flex flex-col gap-2 border-b border-linea">
           <div className="flex items-center justify-between">
-            <h1 className="text-[18px] font-bold tracking-tight">Picada<span className="text-acento">GPS</span> {acceso.empresa ? <span title={acceso.empresa.nombre} className="ml-1 inline-block max-w-[8.5rem] truncate whitespace-nowrap text-[12px] leading-5 font-semibold px-1.5 rounded text-white align-middle" style={{ background: acceso.empresa.color }}>{acceso.empresa.nombre}</span>
+            <h1 className="text-[18px] font-bold tracking-tight">Picada<span className="text-acento">GPS</span> {acceso.empresa ? <span title={acceso.empresa.nombre} className="ml-1 inline-flex items-center gap-1 max-w-[9.5rem] whitespace-nowrap text-[12px] leading-5 font-semibold pl-0.5 pr-1.5 py-0.5 rounded text-white align-middle" style={{ background: acceso.empresa.color }}>{acceso.empresa.logo && <img src={acceso.empresa.logo} alt="" className="h-5 w-auto max-w-[3rem] rounded-sm bg-white p-px object-contain" />}<span className="truncate">{acceso.empresa.nombre}</span></span>
               : <span className="hidden sm:inline text-[12px] font-normal text-tenue">· cuenca neuquina</span>}</h1>
             <span className="flex items-center gap-2">
               {!enLinea && <span className="flex items-center gap-1 text-[12px] text-tenue"><WifiOff className="w-4 h-4" /> Sin señal</span>}

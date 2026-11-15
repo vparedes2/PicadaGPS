@@ -6,6 +6,15 @@
 export interface Version { version: string; fecha: string; titulo: string; usuario: string[] }
 export const VERSIONES: Version[] = [
   {
+    "version": "1.5",
+    "fecha": "2026-11-15",
+    "titulo": "Logo de la empresa",
+    "usuario": [
+      "Cada empresa puede subir su logo: se ve junto al nombre arriba de la app y en el inicio.",
+      "El mensaje de bienvenida de la empresa aparece en el inicio."
+    ]
+  },
+  {
     "version": "1.4",
     "fecha": "2026-11-14",
     "titulo": "Plan Empresa: puntos propios y portal de empresas",
@@ -283,6 +292,12 @@ export const TECNICO: Record<string, [string, string][]> = {
     [
       "21:40",
       "Nombre de la empresa en el encabezado sin cortarse; lista de puntos de la empresa en el inicio; puntos propios a menos de 30 km primero en «Cómo llegar»"
+    ]
+  ],
+  "2026-11-15": [
+    [
+      "19:55",
+      "Logo propio por empresa (se achica a 256 px en el teléfono y se guarda en Supabase), visible en el encabezado, el inicio y el portal; mensaje de bienvenida en el inicio"
     ]
   ]
 };

@@ -6,7 +6,7 @@
 import { supabase, conTiempo, CACHE_DATOS } from "./cuenta";
 
 export type Rol = "admin" | "carga" | "lectura";
-export interface EmpresaInfo { nombre: string; slug: string; color: string; rol: Rol; estado: string; bienvenida?: string | null; hasta?: string | null }
+export interface EmpresaInfo { nombre: string; slug: string; color: string; rol: Rol; estado: string; bienvenida?: string | null; hasta?: string | null; logo?: string | null }
 export interface PuntoPropio { id: string; nombre: string; tipo: string; nota: string | null; lat: number; lon: number; estado: "aprobado" | "pendiente"; creado_por?: string; actualizado?: string }
 export interface PuntoNuevo { id?: string; nombre: string; tipo?: string; nota?: string | null; lat: number; lon: number }
 
@@ -158,6 +158,24 @@ export async function leerArchivoPuntos(f: File): Promise<{ puntos: PuntoNuevo[]
     : desdeCsv(t);
   const puntos = todos.filter(valido).map((p) => ({ ...p, nombre: p.nombre.slice(0, 120), tipo: (p.tipo || "Punto").slice(0, 40) }));
   return { puntos, descartados: todos.length - puntos.length };
+}
+
+/** Achica la imagen del logo (máx. 256 px) y la devuelve como data URL liviana */
+export function prepararLogo(f: File): Promise<string> {
+  return new Promise((ok, mal) => {
+    if (!/^image\/(png|jpeg|webp|svg\+xml)$/.test(f.type)) return mal(new Error("Elegí una imagen PNG, JPG, WEBP o SVG."));
+    const img = new Image(); const url = URL.createObjectURL(f);
+    img.onload = () => {
+      const k = Math.min(1, 256 / Math.max(img.width || 256, img.height || 256));
+      const c = document.createElement("canvas"); c.width = Math.max(1, Math.round((img.width || 256) * k)); c.height = Math.max(1, Math.round((img.height || 256) * k));
+      c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      let d = c.toDataURL("image/webp", 0.9);
+      if (!d.startsWith("data:image/webp")) d = c.toDataURL("image/png");
+      d.length < 190000 ? ok(d) : mal(new Error("La imagen quedó muy pesada: probá con una más simple."));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); mal(new Error("No se pudo leer la imagen.")); };
+    img.src = url;
+  });
 }
 
 export function descargarCsv(puntos: PuntoPropio[], nombre: string) {

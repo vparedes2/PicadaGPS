@@ -13,7 +13,7 @@ export interface Acceso {
   estado: EstadoAcceso; acceso: boolean; hasta: string | null; prueba_hasta?: string; activo_hasta?: string | null;
   plan?: string | null; rol?: string; email?: string; nombre?: string | null; limite_dispositivos?: number;
   revisado?: string; // cuándo se confirmó con el servidor (para el uso sin señal)
-  empresa?: { nombre: string; slug: string; color: string; rol: "admin" | "carga" | "lectura"; estado: string; hasta?: string | null } | null;
+  empresa?: { nombre: string; slug: string; color: string; rol: "admin" | "carga" | "lectura"; estado: string; hasta?: string | null; logo?: string | null; bienvenida?: string | null } | null;
 }
 
 const CLAVE = "picadagps.acceso";

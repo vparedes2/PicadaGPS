@@ -8,7 +8,7 @@ import { Building2, MapPin, Users, Palette, Upload, Download, Check, Trash2, Log
 import { supabase, salir, diaLargo, conTiempo } from "../lib/cuenta";
 import {
   empresaMia, solicitarEmpresa, guardarEmpresa, guardarMiembro, quitarMiembro, listarPuntos, guardarPunto, importarPuntos, accionPunto,
-  leerArchivoPuntos, leerCoordenadas, descargarCsv, TIPOS_PUNTO, ROLES, type Rol, type PuntoPropio, type PuntoNuevo
+  leerArchivoPuntos, leerCoordenadas, descargarCsv, prepararLogo, TIPOS_PUNTO, ROLES, type Rol, type PuntoPropio, type PuntoNuevo
 } from "../lib/empresa";
 import { BotonGoogle } from "./Ingreso";
 import { Leido } from "./PuntoNuevo";
@@ -256,14 +256,23 @@ function Usuarios({ d, recargar }: { d: any; recargar: () => void }) {
 // ------------------------------------------------------------ marca y datos
 function Marca({ d, recargar }: { d: any; recargar: () => void }) {
   const e = d.empresa;
+  const [logo, setLogo] = useState<string | null>(e.logo ?? null);
   const [f, setF] = useState({ nombre: e.nombre ?? "", color: e.color ?? "#1f7a4d", bienvenida: e.bienvenida ?? "", cuit: e.cuit ?? "", contacto_nombre: e.contacto_nombre ?? "", contacto_tel: e.contacto_tel ?? "" });
   const [ok, setOk] = useState<string | null>(null);
   const pon = (k: keyof typeof f) => (ev: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setF({ ...f, [k]: ev.target.value });
-  const guardar = async () => { setOk(null); try { await guardarEmpresa(f); setOk("Guardado."); recargar(); } catch (er) { setOk((er as Error).message); } };
+  const guardar = async () => { setOk(null); try { await guardarEmpresa({ ...f, logo }); setOk("Guardado. Tu gente lo ve la próxima vez que abra la app con señal."); recargar(); } catch (er) { setOk((er as Error).message); } };
+  const elegirLogo = async (fl?: File) => { if (!fl) return; setOk(null); try { setLogo(await prepararLogo(fl)); } catch (er) { setOk((er as Error).message); } };
   return (
     <Tarjeta titulo="Marca y datos de la empresa" icono={<Palette className="w-5 h-5 text-acento" />}>
       <Etiqueta t="Nombre que ve tu gente en la app"><input className={campo} value={f.nombre} onChange={pon("nombre")} /></Etiqueta>
-      <Etiqueta t="Color"><div className="flex items-center gap-3"><input type="color" value={f.color} onChange={pon("color")} className="w-14 h-10 rounded border border-linea" /><span className="px-3 py-1.5 rounded-lg text-white text-[14px] font-semibold" style={{ background: f.color }}>{f.nombre || "Tu empresa"}</span></div></Etiqueta>
+      <Etiqueta t="Logo (PNG, JPG o SVG; mejor cuadrado o apaisado y con fondo transparente)">
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="w-16 h-16 rounded-lg border border-linea bg-white flex items-center justify-center overflow-hidden">{logo ? <img src={logo} alt="Logo" className="max-w-full max-h-full object-contain" /> : <Building2 className="w-6 h-6 text-tenue" />}</span>
+          <label className={`${secundario} cursor-pointer`}><Upload className="w-4 h-4" /> {logo ? "Cambiar logo" : "Subir logo"}<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={(ev) => elegirLogo(ev.target.files?.[0])} /></label>
+          {logo && <button className="text-[13px] underline" onClick={() => setLogo(null)}>Quitar</button>}
+        </div>
+      </Etiqueta>
+      <Etiqueta t="Color"><div className="flex items-center gap-3"><input type="color" value={f.color} onChange={pon("color")} className="w-14 h-10 rounded border border-linea" /><span className="flex items-center gap-2 px-2 py-1 rounded-lg text-white text-[14px] font-semibold" style={{ background: f.color }}>{logo && <img src={logo} alt="" className="h-6 w-auto rounded bg-white p-0.5" />}{f.nombre || "Tu empresa"}</span></div></Etiqueta>
       <Etiqueta t="Mensaje de bienvenida (se ve al abrir la app)"><textarea className={campo} rows={2} maxLength={280} value={f.bienvenida} onChange={pon("bienvenida")} placeholder="Antes de salir, confirmá el acceso con la base. Usá EPP en la locación." /></Etiqueta>
       <div className="grid sm:grid-cols-3 gap-3">
         <Etiqueta t="CUIT"><input className={campo} value={f.cuit} onChange={pon("cuit")} /></Etiqueta>
@@ -317,7 +326,7 @@ export default function PortalEmpresas() {
       <div className="flex flex-col gap-4">
         <div className="rounded-2xl p-5 text-white" style={{ background: `linear-gradient(135deg, ${e.color}, #0f1f17)` }}>
           <p className="text-[13px] opacity-80">{ROLES[rol]} · {d.email}</p>
-          <h1 className="text-[26px] font-bold leading-tight">{e.nombre}</h1>
+          <h1 className="text-[26px] font-bold leading-tight flex items-center gap-3">{e.logo && <img src={e.logo} alt="" className="h-10 w-auto rounded-lg bg-white p-1" />}{e.nombre}</h1>
           <p className="text-[14px] opacity-90">{estado}</p>
         </div>
         <nav className="flex gap-1 border-b border-linea overflow-x-auto">
