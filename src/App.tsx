@@ -49,9 +49,10 @@ function Fila({ x, onClick, derecha }: { x: Pozo | Instalacion; onClick: () => v
   );
 }
 
-function Empresa({ acceso, datos, onNuevo, aviso }: { acceso: Acceso; datos: Datos; onNuevo: () => void; aviso: string | null }) {
+function Empresa({ acceso, datos, onNuevo, aviso, onElegir }: { acceso: Acceso; datos: Datos; onNuevo: () => void; aviso: string | null; onElegir: (k: string) => void }) {
+  const [ver, setVer] = useState(false);
   const e = acceso.empresa; if (!e) return null;
-  const propios = datos.instalaciones.filter((x) => x.propio);
+  const propios = datos.instalaciones.filter((x) => x.propio).sort((a, b) => a.tipo.localeCompare(b.tipo) || a.nombre.localeCompare(b.nombre));
   const pend = propios.filter((x) => x.propio!.estado === "pendiente").length;
   const cola = puntosEnCola();
   return (
@@ -60,7 +61,15 @@ function Empresa({ acceso, datos, onNuevo, aviso }: { acceso: Acceso; datos: Dat
         <h2 className="text-[15px] font-bold" style={{ color: e.color }}>{e.nombre}</h2>
         {e.rol === "admin" && <a href={urlPortal()} className="text-[12px] underline text-tenue">Administrar empresa</a>}
       </div>
-      <p className="text-[13px] text-tenue">{propios.length.toLocaleString("es-AR")} puntos propios de la empresa en el mapa{pend ? ` · ${pend} pendientes` : ""}{cola ? ` · ${cola} sin enviar (falta señal)` : ""}. Se buscan igual que un pozo.</p>
+      <p className="text-[13px] text-tenue">{propios.length.toLocaleString("es-AR")} puntos propios de la empresa{pend ? ` · ${pend} pendientes` : ""}{cola ? ` · ${cola} sin enviar (falta señal)` : ""}. En el mapa se ven con este color <span className="inline-block w-2.5 h-2.5 rounded-full align-middle border-2 border-white" style={{ background: e.color }} />, se buscan por nombre igual que un pozo y aparecen como referencia en «Cómo llegar».</p>
+      {propios.length > 0 && (
+        <button onClick={() => setVer(!ver)} className="text-left text-[14px] font-semibold" style={{ color: e.color }}>{ver ? "Ocultar la lista" : `Ver los ${propios.length.toLocaleString("es-AR")} puntos de la empresa`}</button>
+      )}
+      {ver && (
+        <ul className="rounded-lg border border-linea bg-panel divide-y divide-linea max-h-80 overflow-y-auto">
+          {propios.map((x) => <Fila key={x.k} x={x} onClick={() => onElegir(x.k)} />)}
+        </ul>
+      )}
       {e.estado !== "activa" && <p className="text-[13px] text-[#b37a00]">La empresa todavía no está activa: los puntos los ves solo vos.</p>}
       {(e.rol === "admin" || e.rol === "carga") && (
         <button onClick={onNuevo} className="flex items-center justify-center gap-2 py-2.5 rounded-lg text-white text-[15px] font-semibold" style={{ background: e.color }}>
@@ -227,7 +236,7 @@ export default function App({ acceso }: { acceso: Acceso }) {
       <aside className="order-2 md:order-1 md:w-[420px] md:h-full h-[48%] flex flex-col bg-fondo border-t md:border-t-0 md:border-r border-linea">
         <div className="p-3 pb-2 flex flex-col gap-2 border-b border-linea">
           <div className="flex items-center justify-between">
-            <h1 className="text-[18px] font-bold tracking-tight">Picada<span className="text-acento">GPS</span> {acceso.empresa ? <span className="ml-1 text-[12px] font-semibold px-1.5 py-0.5 rounded text-white align-middle" style={{ background: acceso.empresa.color }}>{acceso.empresa.nombre}</span>
+            <h1 className="text-[18px] font-bold tracking-tight">Picada<span className="text-acento">GPS</span> {acceso.empresa ? <span title={acceso.empresa.nombre} className="ml-1 inline-block max-w-[8.5rem] truncate whitespace-nowrap text-[12px] leading-5 font-semibold px-1.5 rounded text-white align-middle" style={{ background: acceso.empresa.color }}>{acceso.empresa.nombre}</span>
               : <span className="hidden sm:inline text-[12px] font-normal text-tenue">· cuenca neuquina</span>}</h1>
             <span className="flex items-center gap-2">
               {!enLinea && <span className="flex items-center gap-1 text-[12px] text-tenue"><WifiOff className="w-4 h-4" /> Sin señal</span>}
@@ -293,7 +302,7 @@ export default function App({ acceso }: { acceso: Acceso }) {
                 yo={yo} onUbicarme={() => ubicarme()} ubicando={ubicando}
                 linea={linea} onLinea={(desde, tipo) => setLinea({ desde, tipo, n: Date.now() })} />
             ) : <Inicio datos={datos} favoritos={favs.lista} recientes={recs.lista} onElegir={(k) => elegir(k)} onSacarFav={favs.sacar}
-                empresa={<Empresa acceso={acceso} datos={datos} onNuevo={() => { setAvisoPunto(null); setNuevoPunto(true); }} aviso={avisoPunto} />} />}
+                empresa={<Empresa acceso={acceso} datos={datos} onNuevo={() => { setAvisoPunto(null); setNuevoPunto(true); }} aviso={avisoPunto} onElegir={(k) => elegir(k)} />} />}
           {avisoGps && <p className="text-[13px] text-alerta mt-2">{avisoGps}</p>}
         </div>
       </aside>

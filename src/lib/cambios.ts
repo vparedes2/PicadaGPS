@@ -16,7 +16,8 @@ export const VERSIONES: Version[] = [
       "Importación de puntos desde KML de Google Earth, GPX, GeoJSON o planilla CSV.",
       "Los usuarios de una empresa activa entran con plan Empresa.",
       "En las ciudades la ficha ya no muestra salida de ruta ni caminos de yacimiento: Waze y Google Maps llegan directo.",
-      "Al cargar un punto se aceptan coordenadas de Google Earth en grados, minutos y segundos (38°29'4.21\" S 68°31'34.97\" O)."
+      "Al cargar un punto se aceptan coordenadas de Google Earth en grados, minutos y segundos (38°29'4.21\" S 68°31'34.97\" O).",
+      "Los choferes ven la lista de puntos de su empresa en el inicio, y los más cercanos aparecen primero en «Cómo llegar»."
     ]
   },
   {
@@ -278,6 +279,10 @@ export const TECNICO: Record<string, [string, string][]> = {
     [
       "21:30",
       "Carga de puntos: acepta coordenadas en grados, minutos y segundos (Google Earth), grados y minutos, con o sin S/O, y muestra cómo se leyeron"
+    ],
+    [
+      "21:40",
+      "Nombre de la empresa en el encabezado sin cortarse; lista de puntos de la empresa en el inicio; puntos propios a menos de 30 km primero en «Cómo llegar»"
     ]
   ]
 };

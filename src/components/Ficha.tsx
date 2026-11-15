@@ -75,6 +75,13 @@ export default function Ficha({ x, datos, favorito, onFavorito, onCerrar, onEleg
       .map((i) => ({ i, d: distM(i.lat, i.lon, lat, lon) }))
       .filter((r) => !urbano || r.d < 1500)
       .sort((a, b) => a.d - b.d).slice(0, 3);
+    // Los puntos propios de la empresa (base, tranqueras…) van siempre primero si están a menos de 30 km
+    const propios = datos.instalaciones
+      .filter((i) => i.propio && i.k !== x.k && !inst.some((r) => r.i.k === i.k))
+      .map((i) => ({ i, d: distM(i.lat, i.lon, lat, lon) }))
+      .filter((r) => r.d < 30000).sort((a, b) => a.d - b.d).slice(0, 2);
+    inst.unshift(...propios);
+    inst.sort((a, b) => Number(!!b.i.propio) - Number(!!a.i.propio) || a.d - b.d);
     // Pozos en la misma locación (a menos de 80 m): sirve para confirmar que es el pad correcto
     const vecinos = esPozo(x)
       ? datos.pozos.filter((p) => p.k !== x.k && Math.abs(p.lat - lat) < 0.001 && Math.abs(p.lon - lon) < 0.0013 && distM(p.lat, p.lon, lat, lon) < 80)
@@ -212,9 +219,9 @@ export default function Ficha({ x, datos, favorito, onFavorito, onCerrar, onEleg
           )}
           {ref.inst.map(({ i, d }) => (
             <Referencia key={i.k} activa={activa(i)} onClick={() => onLinea({ lat: i.lat, lon: i.lon }, "instalacion")}
-              icono={<Factory className="w-5 h-5 shrink-0 mt-0.5 text-instalacion" />}
+              icono={i.propio ? <MapPin className="w-5 h-5 shrink-0 mt-0.5" style={{ color: i.propio.color }} /> : <Factory className="w-5 h-5 shrink-0 mt-0.5 text-instalacion" />}
               texto={<>A <b>{textoDist(d)}</b> al {cardinal(rumbo(i.lat, i.lon, lat, lon))} de <b>{i.nombre}</b></>}
-              detalle={`${i.tipo}${i.operador ? ` · ${i.operador}` : ""}`}
+              detalle={i.propio ? `${i.tipo} · punto de ${i.propio.empresa}` : `${i.tipo}${i.operador ? ` · ${i.operador}` : ""}`}
               extra={<button onClick={(e) => { e.stopPropagation(); onElegir(i.k); }} aria-label={`Abrir la ficha de ${i.nombre}`} className="text-[12px] px-2 py-1 rounded border border-linea flex items-center gap-1"><FileText className="w-3.5 h-3.5" /> Ficha</button>} />
           ))}
         </ul>
