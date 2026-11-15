@@ -15,7 +15,8 @@ export const VERSIONES: Version[] = [
       "«Agregar punto acá» con el GPS del teléfono; sin señal queda guardado y se envía solo al volver la conexión.",
       "Importación de puntos desde KML de Google Earth, GPX, GeoJSON o planilla CSV.",
       "Los usuarios de una empresa activa entran con plan Empresa.",
-      "En las ciudades la ficha ya no muestra salida de ruta ni caminos de yacimiento: Waze y Google Maps llegan directo."
+      "En las ciudades la ficha ya no muestra salida de ruta ni caminos de yacimiento: Waze y Google Maps llegan directo.",
+      "Al cargar un punto se aceptan coordenadas de Google Earth en grados, minutos y segundos (38°29'4.21\" S 68°31'34.97\" O)."
     ]
   },
   {
@@ -273,6 +274,10 @@ export const TECNICO: Record<string, [string, string][]> = {
     [
       "21:20",
       "Zonas urbanas (Neuquén, Cipolletti, Roca, Añelo, Mendoza, Santa Rosa y otras): sin referencias de campo ni línea a la ruta, y sin calles de OpenStreetMap dibujadas como picadas; los pozos y lo que tiene pozos a menos de 800 m siguen como campo"
+    ],
+    [
+      "21:30",
+      "Carga de puntos: acepta coordenadas en grados, minutos y segundos (Google Earth), grados y minutos, con o sin S/O, y muestra cómo se leyeron"
     ]
   ]
 };

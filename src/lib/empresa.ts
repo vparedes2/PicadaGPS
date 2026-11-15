@@ -61,14 +61,39 @@ const num = (s: unknown) => {
 };
 const valido = (p: PuntoNuevo) => Number.isFinite(p.lat) && Number.isFinite(p.lon) && p.lat > -56 && p.lat < -21 && p.lon > -74 && p.lon < -53;
 
-/** "-38.1234, -68.5678" o "-38,1234 -68,5678" → [lat, lon] */
+/**
+ * Acepta coordenadas como las copia la gente:
+ *  - decimales: "-38.1234, -68.5678", "-38,1234 -68,5678" (también lon, lat)
+ *  - Google Earth / GPS en grados, minutos y segundos: 38°29'4.21"S 68°31'34.97"O, o sin S/O: 38°29'4.21", 68°31'34.97"
+ *  - grados y minutos: 38°29.070' S, 68°31.583' W
+ * Toda la zona está en el hemisferio sur y al oeste, así que sin letra se toman como S y O.
+ */
 export function leerCoordenadas(t: string): [number, number] | null {
-  const m = t.trim().match(/(-?\d+(?:[.,]\d+)?)\s*[,;\s]\s*(-?\d+(?:[.,]\d+)?)/);
-  if (!m) return null;
-  let a = num(m[1]), b = num(m[2]);
+  const txt = t.trim().replace(/[′’´`]/g, "'").replace(/[″“”]/g, '"').replace(/''/g, '"').replace(/º|˚/g, "°");
+  let par: [number, number] | null = null;
+  if (/[°'"]/.test(txt) || /\b[NSEOW]\b/i.test(txt.replace(/\d/g, " "))) {
+    // grados, minutos y segundos (o grados y minutos)
+    const re = /([NSEOW])?\s*(\d{1,3}(?:[.,]\d+)?)\s*°?\s*(?:(\d{1,2}(?:[.,]\d+)?)\s*'\s*)?(?:(\d{1,2}(?:[.,]\d+)?)\s*"\s*)?([NSEOW])?/gi;
+    const vals: number[] = [];
+    for (const m of txt.matchAll(re)) {
+      if (!m[2] || (!m[3] && !m[4] && !/°/.test(m[0]))) continue;
+      const v = num(m[2]) + (m[3] ? num(m[3]) / 60 : 0) + (m[4] ? num(m[4]) / 3600 : 0);
+      if (Number.isFinite(v)) vals.push(-Math.abs(v)); // hemisferio sur y oeste
+      if (vals.length === 2) break;
+    }
+    if (vals.length === 2) par = [vals[0], vals[1]];
+  }
+  if (!par) {
+    const m = txt.match(/(-?\d+(?:[.,]\d+)?)\s*[,;\s]\s*(-?\d+(?:[.,]\d+)?)/);
+    if (!m) return null;
+    let a = num(m[1]), b = num(m[2]);
+    // sin signo: en la zona siempre son negativas
+    if (a > 0 && b > 0) { a = -a; b = -b; }
+    par = [a, b];
+  }
+  let [a, b] = par;
   if (a < -60 && b > -60) [a, b] = [b, a]; // vino lon, lat
-  const p = { nombre: "x", lat: a, lon: b };
-  return valido(p) ? [a, b] : null;
+  return valido({ nombre: "x", lat: a, lon: b }) ? [a, b] : null;
 }
 
 function texto(el: Element | null | undefined, sel: string) { return el?.getElementsByTagName(sel)[0]?.textContent?.trim() ?? ""; }

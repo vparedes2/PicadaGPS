@@ -11,6 +11,7 @@ import {
   leerArchivoPuntos, leerCoordenadas, descargarCsv, TIPOS_PUNTO, ROLES, type Rol, type PuntoPropio, type PuntoNuevo
 } from "../lib/empresa";
 import { BotonGoogle } from "./Ingreso";
+import { Leido } from "./PuntoNuevo";
 
 const WHATSAPP = "5492994603071";
 const campo = "w-full rounded-lg border border-linea bg-panel px-3 py-2.5 text-[15px] outline-none focus:border-acento";
@@ -128,7 +129,7 @@ function Puntos({ rol }: { rol: Rol }) {
 
   const agregar = async () => {
     const c = leerCoordenadas(nuevo.coords);
-    if (!c) { setError("Coordenadas no válidas. Pegalas como «-38.1234, -68.5678» (podés copiarlas de PicadaGPS o de Google Maps)."); return; }
+    if (!c) { setError("Coordenadas no válidas. Pegalas como «-38.1234, -68.5678» o como las copia Google Earth: 38°29'4.21\" S 68°31'34.97\" O."); return; }
     setYendo(true); setError(null);
     try {
       const r = await guardarPunto({ nombre: nuevo.nombre, tipo: nuevo.tipo, nota: nuevo.nota || null, lat: c[0], lon: c[1] });
@@ -165,7 +166,7 @@ function Puntos({ rol }: { rol: Rol }) {
           <Etiqueta t="Nombre"><input className={campo} value={nuevo.nombre} onChange={(e) => setNuevo({ ...nuevo, nombre: e.target.value })} placeholder="Tranquera norte Loma Campana" /></Etiqueta>
           <Etiqueta t="Tipo"><select className={campo} value={nuevo.tipo} onChange={(e) => setNuevo({ ...nuevo, tipo: e.target.value })}>{TIPOS_PUNTO.map((t) => <option key={t}>{t}</option>)}</select></Etiqueta>
         </div>
-        <Etiqueta t="Coordenadas (latitud, longitud)"><input className={campo} value={nuevo.coords} onChange={(e) => setNuevo({ ...nuevo, coords: e.target.value })} placeholder="-38.242108, -68.716056" inputMode="decimal" /></Etiqueta>
+        <Etiqueta t="Coordenadas: decimales o de Google Earth (grados, minutos y segundos)"><input className={campo} value={nuevo.coords} onChange={(e) => setNuevo({ ...nuevo, coords: e.target.value })} placeholder={`-38.4845, -68.5264  o  38°29'4.21" S 68°31'34.97" O`} /><Leido t={nuevo.coords} /></Etiqueta>
         <Etiqueta t="Nota para el chofer (opcional)"><input className={campo} value={nuevo.nota} onChange={(e) => setNuevo({ ...nuevo, nota: e.target.value })} placeholder="Entrar por la picada que sale del km 12, pedir llave en la base" /></Etiqueta>
         <button className={principal} disabled={yendo || !nuevo.nombre || !nuevo.coords} onClick={agregar}>Guardar punto</button>
         <p className="text-[12px] text-tenue">Desde el campo también se cargan en la app con «Agregar punto acá», usando el GPS del teléfono.</p>

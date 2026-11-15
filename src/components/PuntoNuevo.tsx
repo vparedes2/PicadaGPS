@@ -23,6 +23,14 @@ export async function enviarCola(): Promise<number> {
   return n;
 }
 
+/** Muestra cómo se interpretaron las coordenadas pegadas */
+export function Leido({ t }: { t: string }) {
+  if (!t.trim()) return null;
+  const c = leerCoordenadas(t);
+  return c ? <span className="text-[12px] text-acento">✓ {c[0].toFixed(6)}, {c[1].toFixed(6)}</span>
+    : <span className="text-[12px] text-alerta">No reconozco esas coordenadas</span>;
+}
+
 export default function PuntoNuevo({ empresa, color, rol, yo, onCerrar }: {
   empresa: string; color: string; rol: string; yo: { lat: number; lon: number; precision: number } | null; onCerrar: (msj?: string) => void
 }) {
@@ -72,8 +80,9 @@ export default function PuntoNuevo({ empresa, color, rol, yo, onCerrar }: {
           <button onClick={medir} className="flex items-center gap-1 text-[13px] font-semibold text-acento"><Crosshair className="w-4 h-4" /> GPS</button>
         </div>
         {pos?.precision && pos.precision > 50 && <p className="text-[12px] text-[#b37a00]">La precisión es baja. Si podés, esperá unos segundos a cielo abierto y tocá GPS de nuevo.</p>}
-        <label className="flex flex-col gap-1 text-[13px] text-tenue">O pegá coordenadas (opcional)
-          <input className="rounded-lg border border-linea bg-panel px-3 py-2.5 text-[15px]" value={coords} onChange={(e) => setCoords(e.target.value)} placeholder="-38.242108, -68.716056" inputMode="decimal" /></label>
+        <label className="flex flex-col gap-1 text-[13px] text-tenue">O pegá coordenadas (opcional): decimales o de Google Earth
+          <input className="rounded-lg border border-linea bg-panel px-3 py-2.5 text-[15px]" value={coords} onChange={(e) => setCoords(e.target.value)} placeholder={`-38.4845, -68.5264  o  38°29'4.21" S 68°31'34.97" O`} />
+          <Leido t={coords} /></label>
         <label className="flex flex-col gap-1 text-[13px] text-tenue">Nombre
           <input className="rounded-lg border border-linea bg-panel px-3 py-2.5 text-[15px]" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Tranquera norte" /></label>
         <label className="flex flex-col gap-1 text-[13px] text-tenue">Tipo
