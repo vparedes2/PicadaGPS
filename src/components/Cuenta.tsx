@@ -76,6 +76,9 @@ export default function Cuenta({ a, onCerrar, conAdmin = false }: { a: Acceso; o
 
         <div className="flex flex-col gap-2">
           {a.rol === "admin" && (
+            <a href="/empresas" className="flex items-center gap-2 py-2.5 px-3 rounded-lg border border-linea bg-panel font-semibold text-[15px]"><Building2 className="w-4 h-4" /> Portal de empresas</a>
+          )}
+          {a.rol === "admin" && (
             <button onClick={() => setAdmin(true)} className="flex items-center gap-2 py-2.5 px-3 rounded-lg border border-linea bg-panel font-semibold text-[15px]"><Shield className="w-4 h-4" /> Administración</button>
           )}
           <button onClick={compartirWhatsApp} className="flex items-center gap-2 py-2.5 px-3 rounded-lg border border-linea bg-panel text-[15px]"><Share2 className="w-4 h-4" /> Recomendar la app por WhatsApp</button>

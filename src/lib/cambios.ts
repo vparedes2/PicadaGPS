@@ -303,6 +303,10 @@ export const TECNICO: Record<string, [string, string][]> = {
     [
       "21:10",
       "Simulador público /simulador precargado con la empresa de ejemplo (10 camiones, 5 camionetas), valores editables y enlace para compartir el cálculo propio"
+    ],
+    [
+      "21:45",
+      "picadagps.ar queda para usuarios individuales y el administrador general (sin marca de empresa); las empresas entran por /empresa o /empresas; acceso al portal desde Mi cuenta"
     ]
   ]
 };

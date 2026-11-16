@@ -78,6 +78,9 @@ export async function consultarAcceso(): Promise<Acceso> {
   const { data, error } = await conTiempo(supabase.rpc("picada_acceso", { p_dispositivo: dispositivo(), p_nombre: nombreDispositivo() }), 10000);
   if (error) throw new Error(error.message);
   const a = { ...(data as Acceso), revisado: new Date().toISOString() };
+  // picadagps.ar es la app de los usuarios individuales y del administrador general: el administrador la ve siempre
+  // sin marca de empresa (las empresas se administran en /empresas)
+  if (a.rol === "admin") a.empresa = null;
   guardarAcceso(a);
   // La hora del servidor manda: se reinicia la marca del reloj con la fecha real de esta verificación
   try { localStorage.setItem(VISTO, String(Date.now())); } catch { /* nada */ }

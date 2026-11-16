@@ -9,7 +9,7 @@ import Acceso from "./components/Acceso";
 try { const k = new URLSearchParams(location.search).get("p"); if (k) localStorage.setItem("picadagps.abrir", k); } catch { /* nada */ }
 
 // Portal de empresas: empresas.picadagps.ar (o picadagps.ar/empresas) — se carga aparte, no pesa en la app
-const esPortal = location.hostname.startsWith("empresas.") || /^\/empresas\/?$/.test(location.pathname);
+const esPortal = location.hostname.startsWith("empresas.") || /^\/empresas?\/?$/.test(location.pathname);
 const PortalEmpresas = lazy(() => import("./components/PortalEmpresas"));
 // Simulador público de costos: picadagps.ar/simulador (sin cuenta)
 const esSimulador = /^\/simulador\/?$/.test(location.pathname);
