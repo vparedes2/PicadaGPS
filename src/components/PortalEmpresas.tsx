@@ -8,7 +8,7 @@ import { Building2, MapPin, Users, Palette, Upload, Download, Check, Trash2, Log
 import { supabase, salir, diaLargo, conTiempo } from "../lib/cuenta";
 import {
   empresaMia, solicitarEmpresa, guardarEmpresa, guardarMiembro, quitarMiembro, listarPuntos, guardarPunto, importarPuntos, accionPunto,
-  leerArchivoPuntos, leerCoordenadas, descargarCsv, prepararLogo, TIPOS_PUNTO, ROLES, type Rol, type PuntoPropio, type PuntoNuevo
+  leerArchivoPuntos, leerCoordenadas, descargarCsv, prepararLogo, empresasAdmin, elegirEmpresa, crearEmpresa, TIPOS_PUNTO, ROLES, type Rol, type PuntoPropio, type PuntoNuevo
 } from "../lib/empresa";
 import { BotonGoogle } from "./Ingreso";
 import { Leido } from "./PuntoNuevo";
@@ -285,6 +285,86 @@ function Marca({ d, recargar }: { d: any; recargar: () => void }) {
   );
 }
 
+// ------------------------------------------------------------ administrador general: todas las empresas
+const ESTADO_COLOR: Record<string, string> = { activa: "#1f7a4d", pendiente: "#b37a00", suspendida: "#b3261e", rechazada: "#777" };
+function TodasLasEmpresas({ alGestionar }: { alGestionar: (id: string) => void }) {
+  const [lista, setLista] = useState<any[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [nueva, setNueva] = useState(false);
+  const [f, setF] = useState({ nombre: "", slug: "", admin_email: "", contacto_nombre: "", contacto_tel: "", cuit: "", dominio_email: "", usuarios_max: "10", dias: "30" });
+  const [q, setQ] = useState("");
+  const cargar = useCallback(() => empresasAdmin().then(setLista).catch((e) => setError(e.message)), []);
+  useEffect(() => { cargar(); }, [cargar]);
+  const slugDe = (n: string) => n.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\b(s\.?a\.?|s\.?r\.?l\.?|sa|srl|transporte[s]?)\b/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 30);
+  const pon = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
+  const crear = async () => {
+    setError(null);
+    try { const r = await crearEmpresa({ ...f, usuarios_max: Number(f.usuarios_max) || 10, dias: Number(f.dias) || 0 }); setNueva(false); alGestionar(r.id); }
+    catch (e) { setError((e as Error).message); }
+  };
+  const filtradas = (lista ?? []).filter((e) => !q.trim() || `${e.nombre} ${e.slug} ${e.contacto_email ?? ""}`.toLowerCase().includes(q.toLowerCase()));
+  const acc = (p: Record<string, unknown>) => empresasAdmin(p).then(setLista).catch((e) => setError(e.message));
+  const dias = (iso: string | null, d: number) => new Date(Math.max(Date.now(), iso ? Date.parse(iso) : 0) + d * 86400000).toISOString();
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="rounded-2xl p-5 text-white" style={{ background: "linear-gradient(135deg,#0e1b2a,#1d3a5c)" }}>
+        <p className="text-[13px] opacity-80">Administrador general</p>
+        <h1 className="text-[26px] font-bold leading-tight">Empresas</h1>
+        <p className="text-[14px] opacity-90">{lista ? `${lista.length} empresas · ${lista.filter((e) => e.estado === "activa").length} activas · ${lista.filter((e) => e.estado === "pendiente").length} pendientes` : "Cargando…"}</p>
+      </div>
+      <div className="flex gap-2">
+        <label className="relative flex-1"><Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-tenue" /><input className={`${campo} pl-9`} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar empresa" /></label>
+        <button className={principal} onClick={() => setNueva(!nueva)}><Plus className="w-4 h-4" /> Nueva empresa</button>
+      </div>
+      {nueva && (
+        <Tarjeta titulo="Alta de empresa" icono={<Building2 className="w-5 h-5 text-acento" />}>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <Etiqueta t="Nombre de la empresa"><input className={campo} value={f.nombre} onChange={(e) => setF({ ...f, nombre: e.target.value, slug: f.slug && f.slug !== slugDe(f.nombre) ? f.slug : slugDe(e.target.value) })} /></Etiqueta>
+            <Etiqueta t="Nombre corto"><input className={campo} value={f.slug} onChange={(e) => setF({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") })} /></Etiqueta>
+            <Etiqueta t="Correo de Google del responsable (queda como administrador)"><input className={campo} value={f.admin_email} onChange={pon("admin_email")} inputMode="email" placeholder="opcional" /></Etiqueta>
+            <Etiqueta t="Responsable"><input className={campo} value={f.contacto_nombre} onChange={pon("contacto_nombre")} /></Etiqueta>
+            <Etiqueta t="Teléfono"><input className={campo} value={f.contacto_tel} onChange={pon("contacto_tel")} inputMode="tel" /></Etiqueta>
+            <Etiqueta t="CUIT"><input className={campo} value={f.cuit} onChange={pon("cuit")} /></Etiqueta>
+            <Etiqueta t="Dominio de correo (opcional)"><input className={campo} value={f.dominio_email} onChange={pon("dominio_email")} placeholder="empresa.com.ar" /></Etiqueta>
+            <div className="grid grid-cols-2 gap-3">
+              <Etiqueta t="Usuarios máx."><input className={campo} value={f.usuarios_max} onChange={pon("usuarios_max")} inputMode="numeric" /></Etiqueta>
+              <Etiqueta t="Días de vigencia"><input className={campo} value={f.dias} onChange={pon("dias")} inputMode="numeric" /></Etiqueta>
+            </div>
+          </div>
+          <p className="text-[12px] text-tenue">Con 0 días queda pendiente; con más días queda activa desde hoy.</p>
+          <div className="flex gap-2"><button className={principal} disabled={!f.nombre || !f.slug} onClick={crear}>Crear y gestionar</button><button className={secundario} onClick={() => setNueva(false)}>Cancelar</button></div>
+        </Tarjeta>
+      )}
+      {error && <p className="text-[14px] text-alerta">{error}</p>}
+      <ul className="flex flex-col gap-2">
+        {filtradas.map((e) => (
+          <li key={e.id} className="rounded-xl border border-linea bg-panel p-3 flex flex-col gap-2">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                {e.logo ? <img src={e.logo} alt="" className="h-8 w-auto max-w-[4rem] rounded bg-white p-0.5 object-contain" /> : <span className="w-3 h-3 rounded-full shrink-0" style={{ background: e.color }} />}
+                <span className="min-w-0"><b className="block text-[15px] truncate">{e.nombre}</b><span className="block text-[12px] text-tenue truncate">{e.contacto_email || "sin responsable"}{e.contacto_tel ? ` · ${e.contacto_tel}` : ""}</span></span>
+              </div>
+              <span className="text-[12px] font-semibold uppercase shrink-0" style={{ color: ESTADO_COLOR[e.estado] }}>{e.estado}</span>
+            </div>
+            <p className="text-[13px] text-tenue">{e.miembros} usuarios de {e.usuarios_max}{e.dominio_email ? ` + @${e.dominio_email}` : ""} · {e.puntos} puntos · {e.activo_hasta ? `hasta el ${diaLargo(e.activo_hasta)}` : "sin vigencia"}</p>
+            <div className="flex flex-wrap gap-2 text-[14px]">
+              <button className="px-3 py-1.5 rounded-lg bg-acento text-acento-texto font-semibold" onClick={() => alGestionar(e.id)}>Gestionar</button>
+              {e.estado !== "activa" && <button className="px-3 py-1.5 rounded-lg border border-linea" onClick={() => acc({ id: e.id, estado: "activa", activo_hasta: e.activo_hasta && Date.parse(e.activo_hasta) > Date.now() ? e.activo_hasta : dias(null, 30) })}>Activar 30 días</button>}
+              {e.estado === "activa" && <>
+                <button className="px-3 py-1.5 rounded-lg border border-linea" onClick={() => acc({ id: e.id, activo_hasta: dias(e.activo_hasta, 30) })}>+30 días</button>
+                <button className="px-3 py-1.5 rounded-lg border border-linea" onClick={() => acc({ id: e.id, activo_hasta: dias(e.activo_hasta, 365) })}>+1 año</button>
+                <button className="px-3 py-1.5 rounded-lg border border-linea text-alerta" onClick={() => confirm(`¿Suspender ${e.nombre}?`) && acc({ id: e.id, estado: "suspendida" })}>Suspender</button>
+              </>}
+              {e.estado === "pendiente" && <button className="px-3 py-1.5 rounded-lg border border-linea" onClick={() => confirm(`¿Rechazar ${e.nombre}?`) && acc({ id: e.id, estado: "rechazada" })}>Rechazar</button>}
+            </div>
+          </li>
+        ))}
+        {lista && !filtradas.length && <p className="text-[14px] text-tenue">{lista.length ? "Sin coincidencias." : "Todavía no hay empresas."}</p>}
+      </ul>
+    </div>
+  );
+}
+
 // ------------------------------------------------------------ portal
 export default function PortalEmpresas() {
   const [d, setD] = useState<any | null>(null);
@@ -307,10 +387,12 @@ export default function PortalEmpresas() {
   const cerrar = async () => { await salir(); setD({ sesion: false }); };
   const derecha = d?.sesion ? <button onClick={cerrar} className="flex items-center gap-1.5 text-[13px] text-tenue"><LogOut className="w-4 h-4" /> Salir</button> : null;
 
+  const gestionar = async (id: string | null) => { setError(null); try { await elegirEmpresa(id); setPestana("resumen"); await cargar(); } catch (e) { setError((e as Error).message); } };
   let cuerpo: ReactNode;
   if (error) cuerpo = <div className="flex flex-col gap-3"><p className="text-[15px] text-alerta">{error}</p><button className={secundario} onClick={cargar}>Reintentar</button></div>;
   else if (!d) cuerpo = <p className="text-[15px] text-tenue">Cargando…</p>;
   else if (!d.sesion) cuerpo = <Presentacion />;
+  else if (d.superadmin && !d.empresa) cuerpo = <TodasLasEmpresas alGestionar={gestionar} />;
   else if (!d.empresa) cuerpo = (
     <div className="flex flex-col gap-4">
       <p className="text-[14px] text-tenue">Entraste como <b>{d.email}</b>. Esta cuenta todavía no pertenece a ninguna empresa.</p>
@@ -324,6 +406,12 @@ export default function PortalEmpresas() {
     const pestanas = (rol === "admin" ? ["resumen", "puntos", "usuarios", "marca"] : rol === "carga" ? ["resumen", "puntos"] : ["resumen"]) as typeof pestana[];
     cuerpo = (
       <div className="flex flex-col gap-4">
+        {d.superadmin && (
+          <div className="flex items-center justify-between gap-2 rounded-lg border border-linea bg-panel px-3 py-2 text-[13px]">
+            <span className="text-tenue">Administrador general · gestionando esta empresa</span>
+            <button className="font-semibold text-acento" onClick={() => gestionar(null)}>← Todas las empresas</button>
+          </div>
+        )}
         <div className="rounded-2xl p-5 text-white" style={{ background: `linear-gradient(135deg, ${e.color}, #0f1f17)` }}>
           <p className="text-[13px] opacity-80">{ROLES[rol]} · {d.email}</p>
           <h1 className="text-[26px] font-bold leading-tight flex items-center gap-3">{e.logo && <img src={e.logo} alt="" className="h-10 w-auto rounded-lg bg-white p-1" />}{e.nombre}</h1>

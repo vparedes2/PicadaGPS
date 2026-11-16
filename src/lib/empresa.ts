@@ -30,6 +30,9 @@ export const guardarPunto = (p: PuntoNuevo) => rpc<{ ok: boolean; id: string; es
 export const importarPuntos = (p: PuntoNuevo[]) => rpc<{ importados: number; total: number }>("picada_puntos_importar", { p }, 60000);
 export const accionPunto = (id: string, accion: "aprobar" | "borrar") => rpc<{ ok: boolean }>("picada_punto_accion", { p_id: id, p_accion: accion });
 export const empresasAdmin = (p?: Record<string, unknown>) => rpc<any[]>("picada_empresas_admin", { p: p ?? null });
+/** Administrador general: elegir qué empresa gestionar en el portal (null = volver a la lista) */
+export const elegirEmpresa = (id: string | null) => rpc<any>("picada_empresa_elegir", { p_id: id });
+export const crearEmpresa = (p: Record<string, unknown>) => rpc<{ ok: boolean; id: string }>("picada_empresa_crear", { p });
 
 /** Dirección del portal de empresas (el subdominio, o /empresas si se entra por otra dirección) */
 // Mientras no esté autorizado el subdominio en Google y Supabase, el portal se abre en la misma dirección (misma sesión)

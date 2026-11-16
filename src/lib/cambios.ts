@@ -308,5 +308,11 @@ export const TECNICO: Record<string, [string, string][]> = {
       "21:45",
       "picadagps.ar queda para usuarios individuales y el administrador general (sin marca de empresa); las empresas entran por /empresa o /empresas; acceso al portal desde Mi cuenta"
     ]
+  ],
+  "2026-11-16": [
+    [
+      "11:50",
+      "Portal de empresas: el administrador general ve todas las empresas, las da de alta directamente (con responsable y vigencia), las activa, extiende o suspende, y entra a gestionar cualquiera"
+    ]
   ]
 };
