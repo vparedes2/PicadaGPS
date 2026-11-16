@@ -11,7 +11,8 @@ export const VERSIONES: Version[] = [
     "titulo": "Logo de la empresa",
     "usuario": [
       "Cada empresa puede subir su logo: se ve junto al nombre arriba de la app y en el inicio.",
-      "El mensaje de bienvenida de la empresa aparece en el inicio."
+      "El mensaje de bienvenida de la empresa aparece en el inicio.",
+      "Simulador público en picadagps.ar/simulador: cada empresa calcula cuánto le cuestan los errores de ubicación y comparte su cálculo."
     ]
   },
   {
@@ -298,6 +299,10 @@ export const TECNICO: Record<string, [string, string][]> = {
     [
       "19:55",
       "Logo propio por empresa (se achica a 256 px en el teléfono y se guarda en Supabase), visible en el encabezado, el inicio y el portal; mensaje de bienvenida en el inicio"
+    ],
+    [
+      "21:10",
+      "Simulador público /simulador precargado con la empresa de ejemplo (10 camiones, 5 camionetas), valores editables y enlace para compartir el cálculo propio"
     ]
   ]
 };
