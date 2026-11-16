@@ -1,4 +1,5 @@
 /** Pantalla de ingreso: demo de la app, 7 días gratis, precios de los planes y botón de Google. */
+import Presentacion from "./Presentacion";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Search, Route, WifiOff, Navigation, MessageCircle, Share2 } from "lucide-react";
 import { ingresarConGoogle, montarBotonGoogle, consultarPrecios, pesos, type Precios } from "../lib/cuenta";
@@ -92,7 +93,7 @@ export default function Ingreso({ aviso }: { aviso?: ReactNode }) {
   };
 
   return (
-    <div className="min-h-full bg-fondo overflow-y-auto relative">
+    <div id="top" className="h-full bg-fondo overflow-y-auto relative scroll-smooth">
       <Flotantes />
       <div className="relative z-10 w-full max-w-sm mx-auto p-4 flex flex-col gap-4">
         <div className="text-center">
@@ -103,6 +104,7 @@ export default function Ingreso({ aviso }: { aviso?: ReactNode }) {
               <Share2 className="w-4 h-4 text-acento" />
             </button>
           </div>
+          <p className="text-[13px] font-semibold uppercase tracking-wider text-acento mt-0.5">El GPS de los yacimientos</p>
           <p className="text-[15px] text-tenue mt-1">Encontrá cualquier pozo o locación de Neuquén, Río Negro, Mendoza y La Pampa, y llegá aunque no haya señal.</p>
         </div>
 
@@ -169,6 +171,7 @@ export default function Ingreso({ aviso }: { aviso?: ReactNode }) {
 
         <div className="pb-4" />
       </div>
+      <Presentacion />
     </div>
   );
 }

@@ -313,6 +313,10 @@ export const TECNICO: Record<string, [string, string][]> = {
     [
       "11:50",
       "Portal de empresas: el administrador general ve todas las empresas, las da de alta directamente (con responsable y vigencia), las activa, extiende o suspende, y entra a gestionar cualquiera"
+    ],
+    [
+      "12:10",
+      "Presentación debajo del ingreso (problema, ventajas para chofer y empresa, cómo funciona, Plan Empresa con simulador, preguntas) y eslogan «El GPS de los yacimientos»"
     ]
   ]
 };
