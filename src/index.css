@@ -85,3 +85,39 @@ button { cursor: pointer; }
 }
 @media (prefers-reduced-motion: reduce) { .google-latido, .google-mano { animation: none; } .google-mano { transform: rotate(-14deg); } }
 @keyframes aparecer { from { opacity: 0; transform: translateY(16px) scale(.98); } to { opacity: 1; transform: none; } }
+
+/* ---------- Presentación con vida ---------- */
+.aparece { opacity: 0; transform: translateY(22px); transition: opacity .7s ease, transform .7s cubic-bezier(.2,.7,.2,1); }
+.aparece.visto { opacity: 1; transform: none; }
+.tarjeta-viva { transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease; }
+.tarjeta-viva:hover { transform: translateY(-4px); box-shadow: 0 12px 28px -12px rgb(0 0 0 / .35); border-color: var(--acento); }
+.latido-num { animation: latido-num .35s ease; }
+@keyframes latido-num { from { transform: scale(.94); opacity: .6; } to { transform: none; opacity: 1; } }
+.rango { accent-color: #6fe39a; height: 28px; }
+
+.ilus .pozo-fondo { animation: titila 3s ease-in-out infinite; opacity: .55; }
+@keyframes titila { 50% { opacity: 1; } }
+.ilus .waze, .ilus .picada { stroke-dasharray: 100; stroke-dashoffset: 100; }
+.ilus .waze-x, .ilus .salida, .ilus .haz, .ilus .etiqueta { opacity: 0; }
+.ilus.corre .waze { animation: ilus-waze 9s linear infinite; }
+.ilus.corre .waze-x { animation: ilus-x 9s ease infinite; }
+.ilus.corre .salida { animation: ilus-salida 9s ease infinite; }
+.ilus.corre .picada { animation: ilus-picada 9s ease-in-out infinite; }
+.ilus.corre .haz { animation: ilus-haz 9s ease infinite; }
+.ilus.corre .etiqueta { animation: ilus-etq 9s ease infinite; }
+.ilus.corre .anillo { animation: ilus-anillo 1.4s ease-out infinite; transform-origin: center; transform-box: fill-box; }
+@keyframes ilus-waze { 0% { stroke-dashoffset: 100; opacity: 1; } 22% { stroke-dashoffset: 0; } 88% { stroke-dashoffset: 0; opacity: .55; } 96%, 100% { stroke-dashoffset: 0; opacity: 0; } }
+@keyframes ilus-x { 0%, 22% { opacity: 0; } 26% { opacity: 1; } 88% { opacity: .7; } 96%, 100% { opacity: 0; } }
+@keyframes ilus-salida { 0%, 29% { opacity: 0; } 32%, 90% { opacity: 1; } 96%, 100% { opacity: 0; } }
+@keyframes ilus-picada { 0%, 33% { stroke-dashoffset: 100; opacity: 1; } 62%, 90% { stroke-dashoffset: 0; opacity: 1; } 96%, 100% { stroke-dashoffset: 0; opacity: 0; } }
+@keyframes ilus-haz { 0%, 61% { opacity: 0; } 66%, 90% { opacity: 1; } 96%, 100% { opacity: 0; } }
+@keyframes ilus-etq { 0%, 66% { opacity: 0; } 70%, 90% { opacity: 1; } 96%, 100% { opacity: 0; } }
+@keyframes ilus-anillo { from { transform: scale(.6); opacity: .9; } to { transform: scale(2.2); opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .aparece { opacity: 1; transform: none; transition: none; }
+  .tarjeta-viva:hover { transform: none; }
+  .ilus * { animation: none !important; }
+  .ilus .waze, .ilus .picada { stroke-dashoffset: 0; }
+  .ilus .waze-x, .ilus .salida, .ilus .haz, .ilus .etiqueta { opacity: 1; }
+}

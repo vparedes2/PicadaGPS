@@ -317,6 +317,10 @@ export const TECNICO: Record<string, [string, string][]> = {
     [
       "12:10",
       "Presentación debajo del ingreso (problema, ventajas para chofer y empresa, cómo funciona, Plan Empresa con simulador, preguntas) y eslogan «El GPS de los yacimientos»"
+    ],
+    [
+      "12:30",
+      "Presentación con movimiento: secciones que aparecen al bajar, contadores animados, tarjetas que reaccionan, animación Waze vs. PicadaGPS y mini simulador con camiones y camionetas"
     ]
   ]
 };

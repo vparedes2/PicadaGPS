@@ -3,20 +3,23 @@
  * y para la empresa, cómo funciona, Plan Empresa y simulador, preguntas frecuentes.
  */
 import type { ReactNode } from "react";
-import { MapPin, WifiOff, Star, Share2, Navigation, Search, Building2, Clock, Users, ShieldCheck, Calculator, MessageCircle, ChevronDown } from "lucide-react";
+import { Aparece, Contador, IlustracionProblema, MiniSimulador } from "./Vivo";
+import { MapPin, WifiOff, Star, Share2, Navigation, Search, Building2, Clock, Users, ShieldCheck, MessageCircle, ChevronDown } from "lucide-react";
 
 const WA = "5492994603071";
 const wa = (t: string) => `https://wa.me/${WA}?text=${encodeURIComponent(t)}`;
 // Cifras de la versión actual de los datos (noviembre 2026)
-const CIFRAS: [string, string][] = [["33.125", "pozos"], ["1.040", "instalaciones"], ["21.783", "tramos de camino"], ["4", "provincias"]];
+const CIFRAS: [number, string][] = [[33125, "pozos"], [1040, "instalaciones"], [21783, "tramos de camino"], [4, "provincias"]];
 
 function Seccion({ id, eyebrow, titulo, children, alt = false }: { id?: string; eyebrow: string; titulo: string; children: ReactNode; alt?: boolean }) {
   return (
     <section id={id} className={`px-4 py-12 ${alt ? "bg-panel border-y border-linea" : ""}`}>
       <div className="max-w-4xl mx-auto">
-        <p className="text-[12px] font-semibold uppercase tracking-wider text-acento">{eyebrow}</p>
-        <h2 className="text-[26px] sm:text-[30px] leading-tight font-bold mt-1 mb-5">{titulo}</h2>
-        {children}
+        <Aparece>
+          <p className="text-[12px] font-semibold uppercase tracking-wider text-acento">{eyebrow}</p>
+          <h2 className="text-[26px] sm:text-[30px] leading-tight font-bold mt-1 mb-5">{titulo}</h2>
+        </Aparece>
+        <Aparece demora={120}>{children}</Aparece>
       </div>
     </section>
   );
@@ -47,14 +50,15 @@ export default function Presentacion() {
 
       <div className="px-4 pb-10">
         <ul className="max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {CIFRAS.map(([n, t]) => (
-            <li key={t} className="rounded-xl border border-linea bg-panel p-3 text-center"><b className="block text-[24px] text-acento">{n}</b><span className="text-[13px] text-tenue">{t}</span></li>
+          {CIFRAS.map(([n, t], i) => (
+            <Aparece as="li" key={t} demora={i * 90} className="tarjeta-viva rounded-xl border border-linea bg-panel p-3 text-center"><b className="block text-[24px] text-acento"><Contador valor={n} /></b><span className="text-[13px] text-tenue">{t}</span></Aparece>
           ))}
         </ul>
       </div>
 
       <Seccion id="problema" eyebrow="El problema" titulo="El pozo está a 40 km. El acceso, a otros 2." alt>
         <p className="text-[15px] text-tenue mb-4 max-w-2xl">Los caminos de yacimiento no están en Google Maps ni en Waze, y en la zona casi no hay señal. Cada salida a un pozo que no conocés termina en vueltas, llamadas y tiempo perdido.</p>
+        <div className="mb-6"><IlustracionProblema /></div>
         <ul className="grid sm:grid-cols-2 gap-4">
           <Item i={MapPin} t="El mapa te deja en el lugar equivocado" d="No conoce la picada, así que te marca el punto más cercano que sí conoce, que puede estar a kilómetros." />
           <Item i={WifiOff} t="Sin señal no hay mapa" d="La cobertura aparece y desaparece varias veces en cada viaje." />
@@ -65,7 +69,7 @@ export default function Presentacion() {
 
       <Seccion id="ventajas" eyebrow="Ventajas" titulo="Le sirve al chofer. Le sirve a la empresa.">
         <div className="grid sm:grid-cols-2 gap-4">
-          <article className="rounded-2xl border border-linea bg-panel p-5">
+          <article className="tarjeta-viva rounded-2xl border border-linea bg-panel p-5">
             <h3 className="text-[18px] font-bold mb-3">Para el chofer y el técnico</h3>
             <ul className="flex flex-col gap-3">
               <Item i={Search} t="Buscás por sigla, área o yacimiento" d="«lc 10», «loma campana», «vacas muertas»." />
@@ -75,7 +79,7 @@ export default function Presentacion() {
               <Item i={Share2} t="Compartís la ubicación" d="Por WhatsApp, con foto satelital, coordenadas y referencias." />
             </ul>
           </article>
-          <article className="rounded-2xl border-2 border-acento bg-panel p-5">
+          <article className="tarjeta-viva rounded-2xl border-2 border-acento bg-panel p-5">
             <h3 className="text-[18px] font-bold mb-3">Para la empresa</h3>
             <ul className="flex flex-col gap-3">
               <Item i={Clock} t="Menos horas perdidas" d="Menos desvíos, menos gasoil y desgaste, y el equipo del cliente no espera." />
@@ -93,7 +97,7 @@ export default function Presentacion() {
           {[["Entrás con Google", "Desde el navegador del celular, en picadagps.ar. Si querés, la agregás a la pantalla de inicio."],
             ["Buscás el pozo", "Por sigla, área o yacimiento, o desde tus favoritos. Mirás cómo llegar antes de salir."],
             ["Seguís las referencias", "Waze o Maps hasta la salida de la ruta y, desde ahí, el camino de yacimiento hasta la locación."]].map(([t, d], i) => (
-            <li key={t} className="rounded-2xl border border-linea bg-fondo p-5">
+            <li key={t} className="tarjeta-viva rounded-2xl border border-linea bg-fondo p-5">
               <span className="w-8 h-8 rounded-full bg-acento text-acento-texto font-bold flex items-center justify-center">{i + 1}</span>
               <b className="block text-[16px] mt-3">{t}</b><span className="text-[14px] text-tenue">{d}</span>
             </li>
@@ -104,9 +108,9 @@ export default function Presentacion() {
 
       <Seccion id="empresas" eyebrow="Plan Empresa" titulo="¿Cuánto le cuesta a tu flota no encontrar la locación?">
         <div className="rounded-2xl p-5 sm:p-6 text-white" style={{ background: "linear-gradient(135deg,#0e1b2a,#1d3a5c)" }}>
-          <p className="text-[15px] opacity-90 max-w-2xl">Con 10 camiones, 5 camionetas y un 8 % de errores de ubicación, el costo estimado supera los <b>$ 220 millones por año</b>, entre horas, gasoil, desgaste, esperas del cliente y riesgo de contrato. Casi ninguna empresa lo mide.</p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <a href="/simulador" className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white text-[#0e1b2a] font-bold text-[15px]"><Calculator className="w-4 h-4" /> Calculá el de tu empresa</a>
+          <p className="text-[15px] opacity-90 max-w-2xl mb-5">Horas, gasoil, desgaste, esperas del cliente y riesgo de contrato: un costo que casi ninguna empresa mide. Mové la flota y mirá cuánto suma.</p>
+          <MiniSimulador />
+          <div className="mt-5 pt-4 border-t border-white/15 flex flex-wrap gap-2">
             <a href="/empresa" className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-white/60 font-semibold text-[15px]"><Building2 className="w-4 h-4" /> Portal de empresas</a>
             <a href={wa("Hola Víctor, quiero consultar por el Plan Empresa de PicadaGPS.")} className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-white/60 font-semibold text-[15px]"><MessageCircle className="w-4 h-4" /> Consultar por WhatsApp</a>
           </div>
