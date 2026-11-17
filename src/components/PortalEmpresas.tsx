@@ -4,7 +4,7 @@
  * (marca, usuarios y roles, puntos propios con importación de KML, GPX o planilla).
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Building2, MapPin, Users, Palette, Upload, Download, Check, Trash2, LogOut, Plus, ExternalLink, WifiOff, ShieldCheck, Search } from "lucide-react";
+import { Building2, MapPin, Users, Palette, Upload, Download, Check, Trash2, LogOut, Plus, ExternalLink, WifiOff, ShieldCheck, Search, Share2 } from "lucide-react";
 import { supabase, salir, diaLargo, conTiempo } from "../lib/cuenta";
 import {
   empresaMia, solicitarEmpresa, guardarEmpresa, guardarMiembro, quitarMiembro, listarPuntos, guardarPunto, importarPuntos, accionPunto,
@@ -12,6 +12,9 @@ import {
 } from "../lib/empresa";
 import { BotonGoogle } from "./Ingreso";
 import { Leido } from "./PuntoNuevo";
+
+// Texto para compartir la página de empresas (WhatsApp arma la vista previa con el link)
+const TEXTO_COMPARTIR = "🚛 PicadaGPS Plan Empresas: que toda tu flota llegue a la locación correcta. Los pozos de la cuenca neuquina + los puntos propios de tu empresa (tranqueras, bases, pads nuevos) en el teléfono de cada chofer, aunque no haya señal.\n\nhttps://picadagps.ar/empresas";
 
 const WHATSAPP = "5492994603071";
 const campo = "w-full rounded-lg border border-linea bg-panel px-3 py-2.5 text-[15px] outline-none focus:border-acento";
@@ -55,6 +58,7 @@ function Presentacion() {
         <p className="text-[13px] font-semibold uppercase tracking-wide opacity-80">Plan Empresa</p>
         <h1 className="text-[28px] leading-tight font-bold mt-1">Toda tu flota llega a la locación correcta.</h1>
         <p className="mt-2 text-[15px] opacity-90">PicadaGPS con los puntos propios de tu empresa, tus usuarios y tu marca. Para transportistas, servicios especiales, mantenimiento y operadoras.</p>
+        <a className="mt-4 inline-flex items-center gap-2 rounded-lg bg-white/15 hover:bg-white/25 px-4 py-2.5 text-[15px] font-semibold" href={`https://wa.me/?text=${encodeURIComponent(TEXTO_COMPARTIR)}`} target="_blank" rel="noopener"><Share2 className="w-4 h-4" /> Compartir por WhatsApp</a>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         {ventajas.map(([ic, t, d]) => (
