@@ -4,7 +4,7 @@
  * (marca, usuarios y roles, puntos propios con importación de KML, GPX o planilla).
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Building2, MapPin, Users, Palette, Upload, Download, Check, Trash2, LogOut, Plus, ExternalLink, WifiOff, ShieldCheck, Search, Share2 } from "lucide-react";
+import { Building2, MapPin, Users, Palette, Upload, Download, Check, Trash2, LogOut, Plus, ExternalLink, WifiOff, ShieldCheck, Search, Share2, Mail } from "lucide-react";
 import { supabase, salir, diaLargo, conTiempo } from "../lib/cuenta";
 import {
   empresaMia, solicitarEmpresa, guardarEmpresa, guardarMiembro, quitarMiembro, listarPuntos, guardarPunto, importarPuntos, accionPunto,
@@ -72,6 +72,7 @@ function Presentacion() {
         <p className="text-[14px] text-tenue">Usá la cuenta de Google del responsable. Después completás los datos de la empresa y te habilitamos.</p>
         <BotonGoogle />
         <a className="text-[14px] text-acento underline text-center" href={`https://wa.me/${WHATSAPP}?text=${encodeURIComponent("Hola Víctor, quiero consultar por el Plan Empresa de PicadaGPS.")}`}>Consultar por WhatsApp</a>
+        <a className="text-[14px] text-acento underline text-center inline-flex items-center justify-center gap-1.5" href={`mailto:empresas@picadagps.ar?subject=${encodeURIComponent("Plan Empresa PicadaGPS")}`}><Mail className="w-4 h-4" /> empresas@picadagps.ar</a>
       </Tarjeta>
     </div>
   );

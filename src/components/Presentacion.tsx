@@ -4,10 +4,12 @@
  */
 import type { ReactNode } from "react";
 import { Aparece, Contador, IlustracionProblema, MiniSimulador } from "./Vivo";
-import { MapPin, WifiOff, Star, Share2, Navigation, Search, Building2, Clock, Users, ShieldCheck, MessageCircle, ChevronDown } from "lucide-react";
+import { MapPin, WifiOff, Star, Share2, Navigation, Search, Building2, Clock, Users, ShieldCheck, MessageCircle, ChevronDown, Mail } from "lucide-react";
 
 const WA = "5492994603071";
 const wa = (t: string) => `https://wa.me/${WA}?text=${encodeURIComponent(t)}`;
+const CONTACTO = "contacto@picadagps.ar";
+const EMPRESAS = "empresas@picadagps.ar";
 // Cifras de la versión actual de los datos (noviembre 2026)
 const CIFRAS: [number, string][] = [[33125, "pozos"], [1040, "instalaciones"], [21783, "tramos de camino"], [4, "provincias"]];
 
@@ -40,7 +42,8 @@ const PREGUNTAS: [string, string][] = [
   ["¿Necesito cuenta?", "Sí: entrás con tu cuenta de Google. Así guardamos tu prueba de 7 días, tu plan y tus favoritos. La cuenta se puede usar en hasta 2 teléfonos."],
   ["¿Qué zonas cubre?", "Neuquén, Río Negro, Mendoza y La Pampa: pozos, instalaciones (baterías, plantas, puntos de medición), áreas de concesión, rutas y caminos de yacimiento."],
   ["¿Cuánto cuesta y cómo se paga?", "La prueba dura 7 días y no pide tarjeta. Después elegís el plan trimestral o el anual, con precio en pesos del día. Se paga por transferencia, en un solo pago y sin renovación automática."],
-  ["¿Y para una empresa?", "Con el Plan Empresa toda la flota entra con su correo, ve la marca de la empresa y los puntos propios que carga la empresa: bases, tranqueras, pads nuevos, picadas que no figuran en ningún mapa."]
+  ["¿Y para una empresa?", "Con el Plan Empresa toda la flota entra con su correo, ve la marca de la empresa y los puntos propios que carga la empresa: bases, tranqueras, pads nuevos, picadas que no figuran en ningún mapa. Escribinos a empresas@picadagps.ar."],
+  ["¿Cómo los contacto?", "Por WhatsApp al +54 9 299 460 3071 o por correo a contacto@picadagps.ar. Para el Plan Empresa, a empresas@picadagps.ar."]
 ];
 
 export default function Presentacion() {
@@ -113,6 +116,7 @@ export default function Presentacion() {
           <div className="mt-5 pt-4 border-t border-white/15 flex flex-wrap gap-2">
             <a href="/empresa" className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-white/60 font-semibold text-[15px]"><Building2 className="w-4 h-4" /> Portal de empresas</a>
             <a href={wa("Hola Víctor, quiero consultar por el Plan Empresa de PicadaGPS.")} className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-white/60 font-semibold text-[15px]"><MessageCircle className="w-4 h-4" /> Consultar por WhatsApp</a>
+            <a href={`mailto:${EMPRESAS}?subject=${encodeURIComponent("Plan Empresa PicadaGPS")}`} className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-white/60 font-semibold text-[15px]"><Mail className="w-4 h-4" /> {EMPRESAS}</a>
           </div>
         </div>
       </Seccion>
@@ -134,11 +138,13 @@ export default function Presentacion() {
         <div className="mt-4 flex flex-wrap justify-center gap-2">
           <a href="#top" className="px-5 py-3 rounded-xl bg-acento text-acento-texto font-bold text-[15px]">Probar gratis</a>
           <a href={wa("Hola Víctor, quiero información sobre PicadaGPS.")} className="flex items-center gap-2 px-5 py-3 rounded-xl border border-linea bg-panel font-semibold text-[15px]"><MessageCircle className="w-4 h-4" /> WhatsApp +54 9 299 460 3071</a>
+          <a href={`mailto:${CONTACTO}`} className="flex items-center gap-2 px-5 py-3 rounded-xl border border-linea bg-panel font-semibold text-[15px]"><Mail className="w-4 h-4" /> {CONTACTO}</a>
         </div>
       </section>
 
       <footer className="px-4 py-6 border-t border-linea text-center text-[12px] text-tenue">
         <p>Picada<span className="text-acento font-semibold">GPS</span> · El GPS de los yacimientos</p>
+        <p className="mt-1 select-all">{CONTACTO} · {EMPRESAS} · +54 9 299 460 3071</p>
         <p className="mt-1">Verificá el acceso con la operadora antes de salir. No uses la app mientras manejás.</p>
         <p className="mt-1">Imágenes © Esri, Maxar, Earthstar Geographics</p>
       </footer>

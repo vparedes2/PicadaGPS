@@ -5,7 +5,7 @@
  */
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { EJEMPLO, calcular, type V } from "../lib/costos";
-import { Share2, RotateCcw, MessageCircle, ChevronDown, Truck, Clock, Users, Fuel, ShieldAlert, FileSignature, Sparkles } from "lucide-react";
+import { Share2, RotateCcw, MessageCircle, ChevronDown, Truck, Clock, Users, Fuel, ShieldAlert, FileSignature, Sparkles, Mail } from "lucide-react";
 
 const WHATSAPP = "5492994603071";
 
@@ -147,6 +147,7 @@ export default function SimuladorPublico() {
           <div className="mt-3 flex flex-wrap gap-2">
             <a href="/" className="px-4 py-2.5 rounded-lg bg-white text-[#123826] font-bold text-[15px]">Probar 7 días gratis</a>
             <a href={`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(`Hola, hice el cálculo en el simulador de PicadaGPS (${millon(r.total)} por mes) y quiero consultar por el Plan Empresa. ${enlace()}`)}`} className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-white/60 font-semibold text-[15px]"><MessageCircle className="w-4 h-4" /> Plan Empresa por WhatsApp</a>
+            <a href={`mailto:empresas@picadagps.ar?subject=${encodeURIComponent("Plan Empresa PicadaGPS")}&body=${encodeURIComponent(`Hice el cálculo en el simulador (${millon(r.total)} por mes): ${enlace()}`)}`} className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-white/60 font-semibold text-[15px]"><Mail className="w-4 h-4" /> empresas@picadagps.ar</a>
           </div>
         </section>
 

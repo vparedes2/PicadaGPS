@@ -322,5 +322,11 @@ export const TECNICO: Record<string, [string, string][]> = {
       "12:30",
       "Presentación con movimiento: secciones que aparecen al bajar, contadores animados, tarjetas que reaccionan, animación Waze vs. PicadaGPS y mini simulador con camiones y camionetas"
     ]
+  ],
+  "2026-11-21": [
+    [
+      "16:00",
+      "Correos propios: contacto@picadagps.ar en la presentación, el pie y las preguntas frecuentes; empresas@picadagps.ar en Plan Empresa, el portal de empresas y el simulador"
+    ]
   ]
 };
