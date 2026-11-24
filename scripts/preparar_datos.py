@@ -347,6 +347,7 @@ def zonas_otras_provincias():
 
 def caminos_osm():
     """Caminos de yacimiento: en OpenStreetMap figuran como 'unclassified', 'track' o 'service'.
+    También los accesos principales sin número de ruta ('primary', 'secondary' o 'tertiary' sin 'ref').
     Se dejan afuera las huellas de peor categoría (grade4/grade5), estacionamientos y accesos a casas.
     Zona petrolera de Neuquén más los cuadros con pozos de Río Negro, Mendoza y La Pampa."""
     W, S, E, N = ZONA_CAMINOS
@@ -359,6 +360,7 @@ def caminos_osm():
         q = f"""[out:json][timeout:240];
 (
   way["highway"="unclassified"]({s_},{w},{n},{e});
+  way["highway"~"^(primary|secondary|tertiary)$"][!"ref"]({s_},{w},{n},{e});
   way["highway"="track"]["tracktype"!~"grade4|grade5"]({s_},{w},{n},{e});
   way["highway"="service"]["service"!~"driveway|parking_aisle|drive-through"]({s_},{w},{n},{e});
 );
@@ -380,7 +382,10 @@ out geom tags;"""
         if len(coords) < 2:
             continue
         nombre = t.get("name") or t.get("ref") or ""
-        tipo = {"unclassified": "Camino", "track": "Huella", "service": "Camino de servicio"}.get(t.get("highway"), "Camino")
+        # Accesos principales sin número de ruta (p. ej. «Acceso Dique Loma de la Lata»): las rutas vienen del IGN,
+        # que solo trae rutas numeradas, así que estos caminos importantes entran acá
+        tipo = {"unclassified": "Camino", "track": "Huella", "service": "Camino de servicio",
+                "primary": "Camino principal", "secondary": "Camino principal", "tertiary": "Camino principal"}.get(t.get("highway"), "Camino")
         feats.append({"type": "Feature", "properties": {"nombre": nombre, "tipo": tipo, "superficie": t.get("surface", "")},
                       "geometry": {"type": "LineString", "coordinates": coords}})
     if len(feats) < 50:

@@ -337,6 +337,10 @@ export const TECNICO: Record<string, [string, string][]> = {
     [
       "17:10",
       "El camino sugerido también se habilita para un usuario de prueba (lista en recorrido.ts)"
+    ],
+    [
+      "17:35",
+      "Datos: se suman los accesos principales de OpenStreetMap sin número de ruta (por ejemplo, Acceso Dique Loma de la Lata) como «Camino principal»; antes quedaban afuera porque las rutas vienen del IGN"
     ]
   ]
 };
