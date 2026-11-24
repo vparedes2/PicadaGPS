@@ -331,6 +331,10 @@ export const TECNICO: Record<string, [string, string][]> = {
   ],
   "2026-11-24": [
     [
+      "20:50",
+      "Camino sugerido (prueba): si el recorrido cruza un área de concesión de otra operadora distinta a la del destino, la ficha muestra una advertencia con el área y la operadora y recomienda tener autorización de paso"
+    ],
+    [
       "17:30",
       "Prueba solo para el administrador: camino sugerido en la ficha, calculado en el teléfono sobre los caminos de OpenStreetMap, desde la salida de ruta más corta por camino hasta el pozo, dibujado en verde en el mapa"
     ],

@@ -19,6 +19,46 @@ export interface Sugerido {
   /** metros sin camino cargado, del último punto del camino al pozo */
   sinCamino: number;
   salida: { lat: number; lon: number; nombre: string };
+  /** Áreas de otras operadoras que cruza el camino (desde la ruta hacia el pozo): conviene tener permiso de paso */
+  otrasOperadoras: { area: string; operador: string }[];
+}
+
+/** ¿El punto [lon, lat] está dentro del polígono (anillo exterior, sin agujeros)? */
+function dentro(p: number[], anillo: number[][]) {
+  let c = false;
+  for (let i = 0, j = anillo.length - 1; i < anillo.length; j = i++) {
+    const a = anillo[i], b = anillo[j];
+    if ((a[1] > p[1]) !== (b[1] > p[1]) && p[0] < ((b[0] - a[0]) * (p[1] - a[1])) / (b[1] - a[1]) + a[0]) c = !c;
+  }
+  return c;
+}
+const normOp = (o: string) => o.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\b(s ?a|s ?r ?l|sl|suc|arg|sucursal|argentina|u ?t ?e)\b/g, "").replace(/\s+/g, " ").trim();
+
+/** Áreas de concesión que cruza la traza y cuya operadora no es la del destino (el último punto de la traza) */
+function areasAjenas(areas: GeoJSON.FeatureCollection | null, traza: number[][]) {
+  if (!areas) return [];
+  const pols: { area: string; operador: string; anillos: number[][][]; caja: number[] }[] = [];
+  const xs = traza.map((p) => p[0]), ys = traza.map((p) => p[1]);
+  const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+  for (const f of areas.features) {
+    const g = f.geometry as GeoJSON.Polygon | GeoJSON.MultiPolygon;
+    if (!g) continue;
+    const anillos = g.type === "Polygon" ? [g.coordinates[0]] : g.type === "MultiPolygon" ? g.coordinates.map((q) => q[0]) : [];
+    const todos = anillos.flat();
+    const caja = [Math.min(...todos.map((p) => p[0])), Math.max(...todos.map((p) => p[0])), Math.min(...todos.map((p) => p[1])), Math.max(...todos.map((p) => p[1]))];
+    if (caja[1] < x0 || caja[0] > x1 || caja[3] < y0 || caja[2] > y1) continue;
+    pols.push({ area: String(f.properties?.nombre ?? ""), operador: String(f.properties?.operador ?? ""), anillos, caja });
+  }
+  const areaDe = (p: number[]) => pols.find((q) => p[0] >= q.caja[0] && p[0] <= q.caja[1] && p[1] >= q.caja[2] && p[1] <= q.caja[3] && q.anillos.some((a) => dentro(p, a)));
+  const destino = areaDe(traza[traza.length - 1]);
+  if (!destino) return [];
+  const propia = normOp(destino.operador);
+  const vistas = new Map<string, { area: string; operador: string }>();
+  for (let i = 0; i < traza.length; i += 3) {
+    const a = areaDe(traza[i]);
+    if (a && a.operador && normOp(a.operador) !== propia && !vistas.has(a.area)) vistas.set(a.area, { area: a.area, operador: a.operador });
+  }
+  return [...vistas.values()];
 }
 
 const CAJA = 0.3;          // grados alrededor del pozo (~30 km)
@@ -186,5 +226,5 @@ export function sugerirCamino(d: Datos, lat: number, lon: number): Sugerido | nu
   for (let i = fin; i >= 0; i = padre[i]) { traza.push(pts[i]); inicio = i; }
   traza.push([lon, lat]);
   const sinCamino = sinCaminoDe.get(inicio) ?? 0;
-  return { traza, porCamino: dd[fin] - sinCamino * 2, sinCamino, salida: { lat: ruta.p[1], lon: ruta.p[0], nombre: ruta.n } };
+  return { traza, porCamino: dd[fin] - sinCamino * 2, sinCamino, salida: { lat: ruta.p[1], lon: ruta.p[0], nombre: ruta.n }, otrasOperadoras: areasAjenas(d.areas, traza) };
 }

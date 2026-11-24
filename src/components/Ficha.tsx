@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Copy, Check, Star, Share2, Navigation, MapPin, Crosshair, Download, X, Route, Factory, Layers, Waypoints, FileText, FlaskConical } from "lucide-react";
+import { Copy, Check, Star, Share2, Navigation, MapPin, Crosshair, Download, X, Route, Factory, Layers, Waypoints, FileText, FlaskConical, TriangleAlert } from "lucide-react";
 import type { Linea, Marca } from "./Mapa";
 import { esPozo, nombreDe, type Datos, type Instalacion, type Pozo } from "../lib/datos";
 import { aDMS, cardinal, distM, rumbo, rutaMasCercana, textoDist } from "../lib/geo";
@@ -8,6 +8,9 @@ import { compartirUbicacion, enlaceApp, enlaceSatelite } from "../lib/compartir"
 import { capturarSatelite } from "./Mapa";
 import { zonaUrbana } from "../lib/urbano";
 import { sugerirCamino, type Sugerido } from "../lib/recorrido";
+
+/** «AGUADA CANEPA» → «Aguada Canepa», «PAN AMERICAN ENERGY SL» → «Pan American Energy SL» */
+const titulo = (t: string) => t.toLowerCase().replace(/(^|[\s(.-])(\p{L})/gu, (_, a, b) => a + b.toUpperCase()).replace(/\b(S\.A\.|S\.r\.l\.|Sl|Sa|Ute|Ypf)\b/gi, (m) => m.toUpperCase());
 
 interface Props {
   x: Pozo | Instalacion;
@@ -226,6 +229,12 @@ export default function Ficha({ x, datos, favorito, onFavorito, onCerrar, onEleg
             {sug && typeof sug === "object" && !(ref.ruta && ref.ruta.d <= sug.sinCamino) && (
               <>
                 <p className="text-[15px] leading-snug">Salir de <b>{sug.salida.nombre}</b> y seguir <b>{textoDist(sug.porCamino)}</b> por caminos de yacimiento{sug.sinCamino > 30 ? <>, más <b>{textoDist(sug.sinCamino)}</b> sin camino cargado</> : ""}.</p>
+                {sug.otrasOperadoras.length > 0 && (
+                  <div className="rounded-md border border-amber-500 bg-amber-500/10 p-2 flex gap-2 text-[13px] leading-snug">
+                    <TriangleAlert className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+                    <p>El camino pasa por {sug.otrasOperadoras.map((o, i) => <span key={o.area}>{i ? (i === sug.otrasOperadoras.length - 1 ? " y " : ", ") : ""}<b>{titulo(o.area)}</b> ({titulo(o.operador)})</span>)}, de otra operadora. Se recomienda tener autorización de paso antes de ir: puede haber tranqueras o control de acceso.</p>
+                  </div>
+                )}
                 <p className="text-[12px] text-tenue">Salida: {sug.salida.lat.toFixed(5)}, {sug.salida.lon.toFixed(5)}{ref.ruta ? ` · en línea recta la ruta queda a ${textoDist(ref.ruta.d)}` : ""}</p>
                 <div className="flex gap-2">
                   <button onClick={() => onLinea({ lat: sug.salida.lat, lon: sug.salida.lon }, "sugerido", sug.traza)} className="flex-1 py-2 rounded-lg border border-linea text-[14px] font-semibold">Ver en el mapa</button>
