@@ -216,7 +216,7 @@ export default function Ficha({ x, datos, favorito, onFavorito, onCerrar, onEleg
         <h3 className="text-[13px] uppercase tracking-wide text-tenue font-semibold">Cómo llegar</h3>
         {admin && !urbano && (
           <div className="rounded-lg border-2 border-dashed border-[#16a34a] bg-panel p-3 flex flex-col gap-2">
-            <p className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wide text-[#16a34a]"><FlaskConical className="w-4 h-4" /> Prueba · solo administrador</p>
+            <p className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wide text-[#16a34a]"><FlaskConical className="w-4 h-4" /> Función en prueba</p>
             {sug === null && <button onClick={calcular} className="flex items-center justify-center gap-2 py-2.5 rounded-lg bg-[#16a34a] text-white font-semibold text-[15px]"><Waypoints className="w-5 h-5" /> Sugerir camino por OpenStreetMap</button>}
             {sug === "calculando" && <p className="text-[14px] text-tenue">Calculando el camino…</p>}
             {sug === "nada" && <p className="text-[14px]">No encontré un camino cargado que una una ruta con este {esPozo(x) ? "pozo" : "lugar"} (o el camino más cercano queda a más de 3 km).</p>}

@@ -6,6 +6,11 @@
 import { distM } from "./geo";
 import type { Datos } from "./datos";
 
+/** Quiénes ven la prueba del camino sugerido, además del administrador */
+export const PRUEBA_CAMINO = ["gonzalesrigo04@gmail.com"];
+export const veCaminoSugerido = (a: { rol?: string; email?: string }) =>
+  a.rol === "admin" || (!!a.email && PRUEBA_CAMINO.includes(a.email.toLowerCase()));
+
 export interface Sugerido {
   /** [lon, lat] desde la salida de la ruta hasta el pozo */
   traza: number[][];

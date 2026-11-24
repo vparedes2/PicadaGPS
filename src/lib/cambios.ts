@@ -333,6 +333,10 @@ export const TECNICO: Record<string, [string, string][]> = {
     [
       "17:30",
       "Prueba solo para el administrador: camino sugerido en la ficha, calculado en el teléfono sobre los caminos de OpenStreetMap, desde la salida de ruta más corta por camino hasta el pozo, dibujado en verde en el mapa"
+    ],
+    [
+      "17:10",
+      "El camino sugerido también se habilita para un usuario de prueba (lista en recorrido.ts)"
     ]
   ]
 };
