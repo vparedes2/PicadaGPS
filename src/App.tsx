@@ -301,7 +301,7 @@ export default function App({ acceso }: { acceso: Acceso }) {
               <Ficha x={x} datos={datos} favorito={favs.lista.includes(x.k)} onFavorito={() => favs.alternar(x.k)} onCerrar={() => setSel(null)}
                 onElegir={(k) => elegir(k)} onVer={(lat, lon, zoom) => setCentrar({ lat, lon, zoom, n: Date.now() })}
                 yo={yo} onUbicarme={() => ubicarme()} ubicando={ubicando}
-                linea={linea} onLinea={(desde, tipo) => setLinea({ desde, tipo, n: Date.now() })} />
+                linea={linea} onLinea={(desde, tipo, traza) => setLinea({ desde, tipo, n: Date.now(), traza })} admin={acceso.rol === "admin"} />
             ) : <Inicio datos={datos} favoritos={favs.lista} recientes={recs.lista} onElegir={(k) => elegir(k)} onSacarFav={favs.sacar}
                 empresa={<Empresa acceso={acceso} datos={datos} onNuevo={() => { setAvisoPunto(null); setNuevoPunto(true); }} aviso={avisoPunto} onElegir={(k) => elegir(k)} />} />}
           {avisoGps && <p className="text-[13px] text-alerta mt-2">{avisoGps}</p>}

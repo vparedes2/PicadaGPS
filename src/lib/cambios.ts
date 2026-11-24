@@ -328,5 +328,11 @@ export const TECNICO: Record<string, [string, string][]> = {
       "16:00",
       "Correos propios: contacto@picadagps.ar en la presentación, el pie y las preguntas frecuentes; empresas@picadagps.ar en Plan Empresa, el portal de empresas y el simulador"
     ]
+  ],
+  "2026-11-24": [
+    [
+      "17:30",
+      "Prueba solo para el administrador: camino sugerido en la ficha, calculado en el teléfono sobre los caminos de OpenStreetMap, desde la salida de ruta más corta por camino hasta el pozo, dibujado en verde en el mapa"
+    ]
   ]
 };

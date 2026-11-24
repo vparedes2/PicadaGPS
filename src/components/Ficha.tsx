@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Copy, Check, Star, Share2, Navigation, MapPin, Crosshair, Download, X, Route, Factory, Layers, Waypoints, FileText } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Copy, Check, Star, Share2, Navigation, MapPin, Crosshair, Download, X, Route, Factory, Layers, Waypoints, FileText, FlaskConical } from "lucide-react";
 import type { Linea, Marca } from "./Mapa";
 import { esPozo, nombreDe, type Datos, type Instalacion, type Pozo } from "../lib/datos";
 import { aDMS, cardinal, distM, rumbo, rutaMasCercana, textoDist } from "../lib/geo";
@@ -7,6 +7,7 @@ import { copiar, enlaceGoogle, enlaceOtraApp, enlaceWaze, enlaceWazeVer, guardar
 import { compartirUbicacion, enlaceApp, enlaceSatelite } from "../lib/compartir";
 import { capturarSatelite } from "./Mapa";
 import { zonaUrbana } from "../lib/urbano";
+import { sugerirCamino, type Sugerido } from "../lib/recorrido";
 
 interface Props {
   x: Pozo | Instalacion;
@@ -20,7 +21,9 @@ interface Props {
   onUbicarme: () => void;
   ubicando: boolean;
   linea: Linea | null;
-  onLinea: (desde: Marca, tipo: Linea["tipo"]) => void;
+  onLinea: (desde: Marca, tipo: Linea["tipo"], traza?: number[][]) => void;
+  /** Funciones en prueba, solo para el administrador */
+  admin?: boolean;
 }
 
 function BotonCopiar({ texto, etiqueta }: { texto: string; etiqueta: string }) {
@@ -60,7 +63,7 @@ const Nav = ({ href, children, principal }: { href: string; children: React.Reac
   </a>
 );
 
-export default function Ficha({ x, datos, favorito, onFavorito, onCerrar, onElegir, onVer, yo, onUbicarme, ubicando, linea, onLinea }: Props) {
+export default function Ficha({ x, datos, favorito, onFavorito, onCerrar, onElegir, onVer, yo, onUbicarme, ubicando, linea, onLinea, admin }: Props) {
   const nombre = nombreDe(x);
   const { lat, lon } = x;
   const [guardando, setGuardando] = useState<string | null>(null);
@@ -93,7 +96,17 @@ export default function Ficha({ x, datos, favorito, onFavorito, onCerrar, onEleg
     return { inst, vecinos, ruta, camino };
   }, [x, datos, lat, lon, urbano]);
 
-  const activa = (p: { lat: number; lon: number }) => !!linea && Math.abs(linea.desde.lat - p.lat) < 1e-7 && Math.abs(linea.desde.lon - p.lon) < 1e-7;
+  const [sug, setSug] = useState<Sugerido | null | "calculando" | "nada">(null);
+  useEffect(() => { setSug(null); }, [x.k]);
+  const calcular = () => {
+    setSug("calculando");
+    setTimeout(() => {
+      const r = sugerirCamino(datos, lat, lon);
+      setSug(r ?? "nada");
+      if (r) onLinea({ lat: r.salida.lat, lon: r.salida.lon }, "sugerido", r.traza);
+    }, 30);
+  };
+  const activa = (p: { lat: number; lon: number }) => !!linea && !linea.traza && Math.abs(linea.desde.lat - p.lat) < 1e-7 && Math.abs(linea.desde.lon - p.lon) < 1e-7;
   const desdeYo = yo ? { d: distM(yo.lat, yo.lon, lat, lon), r: rumbo(yo.lat, yo.lon, lat, lon) } : null;
   const dec = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
   const dms = `${aDMS(lat, true)}, ${aDMS(lon, false)}`;
@@ -201,6 +214,28 @@ export default function Ficha({ x, datos, favorito, onFavorito, onCerrar, onEleg
 
       {(!urbano || ref.inst.length > 0 || ref.vecinos.length > 0) && <section aria-label="Cómo llegar" className="flex flex-col gap-2">
         <h3 className="text-[13px] uppercase tracking-wide text-tenue font-semibold">Cómo llegar</h3>
+        {admin && !urbano && (
+          <div className="rounded-lg border-2 border-dashed border-[#16a34a] bg-panel p-3 flex flex-col gap-2">
+            <p className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wide text-[#16a34a]"><FlaskConical className="w-4 h-4" /> Prueba · solo administrador</p>
+            {sug === null && <button onClick={calcular} className="flex items-center justify-center gap-2 py-2.5 rounded-lg bg-[#16a34a] text-white font-semibold text-[15px]"><Waypoints className="w-5 h-5" /> Sugerir camino por OpenStreetMap</button>}
+            {sug === "calculando" && <p className="text-[14px] text-tenue">Calculando el camino…</p>}
+            {sug === "nada" && <p className="text-[14px]">No encontré un camino cargado que una una ruta con este {esPozo(x) ? "pozo" : "lugar"} (o el camino más cercano queda a más de 3 km).</p>}
+            {sug && typeof sug === "object" && ref.ruta && ref.ruta.d <= sug.sinCamino && (
+              <p className="text-[14px]">El {esPozo(x) ? "pozo" : "lugar"} queda a {textoDist(ref.ruta.d)} de {ref.ruta.nombre}, más cerca que cualquier camino cargado: usá la salida de la ruta de abajo.</p>
+            )}
+            {sug && typeof sug === "object" && !(ref.ruta && ref.ruta.d <= sug.sinCamino) && (
+              <>
+                <p className="text-[15px] leading-snug">Salir de <b>{sug.salida.nombre}</b> y seguir <b>{textoDist(sug.porCamino)}</b> por caminos de yacimiento{sug.sinCamino > 30 ? <>, más <b>{textoDist(sug.sinCamino)}</b> sin camino cargado</> : ""}.</p>
+                <p className="text-[12px] text-tenue">Salida: {sug.salida.lat.toFixed(5)}, {sug.salida.lon.toFixed(5)}{ref.ruta ? ` · en línea recta la ruta queda a ${textoDist(ref.ruta.d)}` : ""}</p>
+                <div className="flex gap-2">
+                  <button onClick={() => onLinea({ lat: sug.salida.lat, lon: sug.salida.lon }, "sugerido", sug.traza)} className="flex-1 py-2 rounded-lg border border-linea text-[14px] font-semibold">Ver en el mapa</button>
+                  <a href={enlaceWaze(sug.salida.lat, sug.salida.lon)} target="_blank" rel="noopener" className="flex-1 py-2 rounded-lg border border-linea text-[14px] font-semibold text-center">Waze a la salida</a>
+                </div>
+                <p className="text-[12px] text-tenue leading-snug">Calculado con los caminos de OpenStreetMap: puede faltar algún tramo o haber tranqueras. Verificá el acceso con la operadora.</p>
+              </>
+            )}
+          </div>
+        )}
         <p className="text-[12px] text-tenue -mb-1">Tocá una referencia para ver en el mapa la línea punteada hasta el {esPozo(x) ? "pozo" : "lugar"}.</p>
         <ul className="rounded-lg border border-linea bg-panel divide-y divide-linea">
           {ref.ruta && (

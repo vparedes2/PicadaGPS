@@ -4,7 +4,7 @@ import type { Datos } from "../lib/datos";
 import { TESELA } from "../lib/navegar";
 
 export interface Marca { lat: number; lon: number }
-export interface Linea { desde: Marca; tipo: "ruta" | "camino" | "instalacion"; n: number }
+export interface Linea { desde: Marca; tipo: "ruta" | "camino" | "instalacion" | "sugerido"; n: number; /** [lon, lat] por camino, para el camino sugerido */ traza?: number[][] }
 interface Props {
   datos: Datos;
   seleccion: Marca | null;
@@ -103,7 +103,7 @@ function etiqueta(texto: string, clase: "area" | "pozo" | "inst") {
 }
 const css = (v: string) => getComputedStyle(document.documentElement).getPropertyValue(v).trim() || "#888";
 
-const COLOR_LINEA = { ruta: "#b3261e", camino: "#7a4b00", instalacion: "#1d4ed8" };
+const COLOR_LINEA = { ruta: "#b3261e", camino: "#7a4b00", instalacion: "#1d4ed8", sugerido: "#16a34a" };
 
 export default function Mapa({ datos, seleccion, linea, yo, satelite, onElegir, centrarEn }: Props) {
   const div = useRef<HTMLDivElement>(null);
@@ -152,7 +152,9 @@ export default function Mapa({ datos, seleccion, linea, yo, satelite, onElegir, 
           },
           { id: "rutas-borde", type: "line", source: "rutas", paint: { "line-color": "#5b4a1e", "line-width": ["interpolate", ["linear"], ["zoom"], 7, 2.5, 14, 6] } },
           { id: "rutas", type: "line", source: "rutas", paint: { "line-color": "#f5c542", "line-width": ["interpolate", ["linear"], ["zoom"], 7, 1.2, 14, 4] } },
-          { id: "salida", type: "line", source: "salida", paint: { "line-color": ["get", "color"], "line-width": 3, "line-dasharray": [2, 1.5] } },
+          { id: "sugerido-borde", type: "line", source: "salida", filter: ["==", ["get", "s"], 1], layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": "#ffffff", "line-width": 8, "line-opacity": 0.9 } },
+          { id: "sugerido", type: "line", source: "salida", filter: ["==", ["get", "s"], 1], layout: { "line-join": "round", "line-cap": "round" }, paint: { "line-color": ["get", "color"], "line-width": 5 } },
+          { id: "salida", type: "line", source: "salida", filter: ["!=", ["get", "s"], 1], paint: { "line-color": ["get", "color"], "line-width": 3, "line-dasharray": [2, 1.5] } },
           { id: "salida-punto", type: "circle", source: "salida", filter: ["==", ["geometry-type"], "Point"], paint: { "circle-radius": 6, "circle-color": ["get", "color"], "circle-stroke-color": "#fff", "circle-stroke-width": 2 } },
           {
             id: "pozos", type: "circle", source: "pozos",
@@ -281,7 +283,7 @@ export default function Mapa({ datos, seleccion, linea, yo, satelite, onElegir, 
     const color = linea ? COLOR_LINEA[linea.tipo] : "#b3261e";
     const poner = () => (m.getSource("salida") as GeoJSONSource | undefined)?.setData(seleccion && linea
       ? { type: "FeatureCollection", features: [
-          { type: "Feature", properties: { color }, geometry: { type: "LineString", coordinates: [[seleccion.lon, seleccion.lat], [linea.desde.lon, linea.desde.lat]] } },
+          { type: "Feature", properties: { color, s: linea.traza ? 1 : 0 }, geometry: { type: "LineString", coordinates: linea.traza ?? [[seleccion.lon, seleccion.lat], [linea.desde.lon, linea.desde.lat]] } },
           { type: "Feature", properties: { color }, geometry: { type: "Point", coordinates: [linea.desde.lon, linea.desde.lat] } }
         ] }
       : vacio);
@@ -293,6 +295,7 @@ export default function Mapa({ datos, seleccion, linea, yo, satelite, onElegir, 
     const m = mapa.current;
     if (!m || !seleccion || !linea || linea.n === 0) return;
     const b = new maplibregl.LngLatBounds([seleccion.lon, seleccion.lat], [seleccion.lon, seleccion.lat]).extend([linea.desde.lon, linea.desde.lat]);
+    for (const p of linea.traza ?? []) b.extend(p as [number, number]);
     m.fitBounds(b, { padding: 60, maxZoom: 15.5, duration: 900 });
   }, [linea?.n]);
 
