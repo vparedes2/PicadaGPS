@@ -1,0 +1,31 @@
+name: Caminos detectados (Microsoft)
+
+# A mano desde la pestaña Actions: baja los caminos detectados por satélite de Microsoft
+# y guarda en datos/caminos_ms.geojson los que no están en OpenStreetMap (los ve solo el administrador).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  caminos_ms:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install shapely==2.0.6
+      - name: Caminos detectados
+        run: python3 scripts/caminos_ms.py
+      - name: Guardar cambios
+        run: |
+          git config user.name "picadagps-datos"
+          git config user.email "actions@users.noreply.github.com"
+          git add datos/caminos_ms.geojson
+          if git diff --cached --quiet; then echo "Sin cambios"; exit 0; fi
+          git commit -m "Caminos detectados (Microsoft) $(date -u +%Y-%m-%d)"
+          git pull --rebase -X theirs origin main || true
+          git push
