@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, Satellite, Map as MapaIcono, Star, Clock, WifiOff, Info, Factory, X, Crosshair, UserRound, Layers, Share2, MapPin } from "lucide-react";
+import { Search, Satellite, Map as MapaIcono, Star, Clock, WifiOff, Info, Factory, X, Crosshair, UserRound, Layers, Share2, MapPin, Route } from "lucide-react";
 import { compartirWhatsApp } from "./lib/compartir";
 import Mapa from "./components/Mapa";
 import PuntoNuevo, { enviarCola, puntosEnCola } from "./components/PuntoNuevo";
 import { urlPortal } from "./lib/empresa";
 import Ficha from "./components/Ficha";
-import { useDatos, esPozo, nombreDe, type Datos, type Pozo, type Instalacion } from "./lib/datos";
+import { useDatos, cargarDetectados, esPozo, nombreDe, type Datos, type Pozo, type Instalacion } from "./lib/datos";
 import { buscarPorPartes, buscarAreas } from "./lib/buscar";
 import { rutaMasCercana } from "./lib/geo";
 import { zonaUrbana } from "./lib/urbano";
@@ -197,6 +197,13 @@ export default function App({ acceso }: { acceso: Acceso }) {
   const salida = useMemo(() => (x && datos && (esPozo(x) || datos.pozoCerca(x.lat, x.lon, 800) || !zonaUrbana(x.lat, x.lon)) ? rutaMasCercana(x.lat, x.lon, datos.rutas) : null), [x, datos]);
   // Referencia dibujada en el mapa: por defecto la salida de la ruta; cambia al tocar otra en la ficha
   const [linea, setLinea] = useState<Linea | null>(null);
+  // Caminos detectados por satélite: prueba solo para el administrador
+  const [verDetectados, setVerDetectados] = useState(false);
+  const [detectados, setDetectados] = useState<GeoJSON.FeatureCollection | null>(null);
+  useEffect(() => {
+    if (acceso.rol !== "admin" || !verDetectados || detectados) return;
+    cargarDetectados().then((d) => setDetectados(d ?? { type: "FeatureCollection", features: [] }));
+  }, [acceso.rol, verDetectados, detectados]);
   useEffect(() => { setLinea(salida ? { desde: { lat: salida.lat, lon: salida.lon }, tipo: "ruta", n: 0 } : null); }, [salida]);
 
   // Enlace compartido (?p=clave): abre ese pozo apenas están los datos. Se guarda por si antes tiene que entrar con Google.
@@ -312,7 +319,7 @@ export default function App({ acceso }: { acceso: Acceso }) {
       <main className="order-1 md:order-2 relative flex-1 min-h-0">
         {datos && (
           <Mapa datos={datos} seleccion={x ? { lat: x.lat, lon: x.lon } : null} linea={linea}
-            yo={yo} satelite={satelite} onElegir={(k) => elegir(k, false)} centrarEn={centrar} />
+            yo={yo} satelite={satelite} onElegir={(k) => elegir(k, false)} centrarEn={centrar} detectados={verDetectados ? detectados : null} />
         )}
         <div className="absolute left-3 top-3 flex flex-col gap-2 z-10">
           <button onClick={() => setSatelite(!satelite)} aria-pressed={satelite}
@@ -323,6 +330,12 @@ export default function App({ acceso }: { acceso: Acceso }) {
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-panel border border-linea shadow text-[13px] font-medium">
             <Crosshair className="w-4 h-4" /> Mi ubicación
           </button>
+          {acceso.rol === "admin" && (
+            <button onClick={() => setVerDetectados(!verDetectados)} aria-pressed={verDetectados} title="Caminos detectados por satélite (Microsoft) que no están en OpenStreetMap. En prueba, solo administrador."
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border shadow text-[13px] font-medium ${verDetectados ? "bg-[#7c3aed] border-[#7c3aed] text-white" : "bg-panel border-linea"}`}>
+              <Route className="w-4 h-4" /> Detectados{verDetectados && detectados ? ` (${detectados.features.length.toLocaleString("es-AR")})` : ""}
+            </button>
+          )}
         </div>
       </main>
       {datos && !verCuenta && <Novedad datos={datos} />}

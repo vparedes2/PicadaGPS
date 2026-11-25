@@ -6,14 +6,16 @@ import { gzipSync } from "node:zlib";
 
 const SUPA_URL = process.env.SUPABASE_URL || "https://azccpjhcafurltdndkam.supabase.co";
 const SUPA_CLAVE = process.env.SUPABASE_PUBLISHABLE_KEY || "sb_publishable_UFzi-mP-yeIThOiavE0n8Q_TEk0pRF9";
-const PERMITIDOS = new Set(["pozos.json", "instalaciones.json", "areas.geojson", "rutas.geojson", "caminos.geojson", "meta.json"]);
+const PERMITIDOS = new Set(["pozos.json", "instalaciones.json", "areas.geojson", "rutas.geojson", "caminos.geojson", "meta.json", "caminos_ms.geojson"]);
+/** Archivos en prueba que solo baja el administrador */
+const SOLO_ADMIN = new Set(["caminos_ms.geojson"]);
 
-const accesos = new Map<string, { t: number; ok: boolean }>();
+const accesos = new Map<string, { t: number; ok: boolean; admin: boolean }>();
 async function tieneAcceso(token: string, disp: string) {
   const clave = `${token}|${disp}`;
   const c = accesos.get(clave);
-  if (c && Date.now() - c.t < 5 * 60000) return c.ok;
-  let ok = false;
+  if (c && Date.now() - c.t < 5 * 60000) return c;
+  let ok = false, admin = false;
   try {
     const r = await fetch(`${SUPA_URL}/rest/v1/rpc/picada_acceso`, {
       method: "POST",
@@ -21,11 +23,12 @@ async function tieneAcceso(token: string, disp: string) {
       body: JSON.stringify({ p_dispositivo: disp || null }),
       signal: AbortSignal.timeout(8000)
     });
-    if (r.ok) ok = (await r.json())?.acceso === true;
+    if (r.ok) { const j = await r.json(); ok = j?.acceso === true; admin = ok && j?.rol === "admin"; }
   } catch { /* sin respuesta: se niega */ }
-  accesos.set(clave, { t: Date.now(), ok });
+  const v = { t: Date.now(), ok, admin };
+  accesos.set(clave, v);
   if (accesos.size > 2000) accesos.delete(accesos.keys().next().value!);
-  return ok;
+  return v;
 }
 
 const comprimidos = new Map<string, Buffer>();
@@ -46,7 +49,9 @@ export default async function handler(req: any, res: any) {
   const token = String(req.headers.authorization || "").replace(/^Bearer\s+/i, "");
   if (!token) return res.status(401).json({ error: "Ingresá con tu cuenta." });
   const disp = String(req.headers["x-dispositivo"] || "").slice(0, 80);
-  if (!(await tieneAcceso(token, disp))) return res.status(403).json({ error: "Tu acceso no está vigente." });
+  const acc = await tieneAcceso(token, disp);
+  if (!acc.ok) return res.status(403).json({ error: "Tu acceso no está vigente." });
+  if (SOLO_ADMIN.has(nombre) && !acc.admin) return res.status(404).json({ error: "No existe." });
   try {
     const b = await archivo(nombre);
     res.setHeader("Content-Type", "application/json; charset=utf-8");

@@ -331,6 +331,10 @@ export const TECNICO: Record<string, [string, string][]> = {
   ],
   "2026-11-25": [
     [
+      "20:40",
+      "Caminos detectados por satélite (Microsoft Road Detections, ODbL) que faltan en OpenStreetMap: flujo manual caminos_ms.yml genera datos/caminos_ms.geojson; /api/datos lo entrega solo al administrador; botón «Detectados» en el mapa (violeta punteado). No los usa el camino sugerido"
+    ],
+    [
       "20:15",
       "Administración: tilde por usuario para habilitar «posibles accesos por camino» (columna camino_sugerido en picada_cuentas, la devuelve picada_acceso y la cambia picada-admin). Reemplaza la lista fija de correos"
     ],

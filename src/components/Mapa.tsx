@@ -14,6 +14,8 @@ interface Props {
   satelite: boolean;
   onElegir: (clave: string) => void;
   centrarEn: { lat: number; lon: number; zoom: number; n: number; caja?: [number, number, number, number] } | null;
+  /** Caminos detectados por satélite (solo administrador, en prueba) */
+  detectados?: GeoJSON.FeatureCollection | null;
 }
 
 const vacio: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
@@ -110,7 +112,7 @@ const css = (v: string) => getComputedStyle(document.documentElement).getPropert
 
 const COLOR_LINEA = { ruta: "#b3261e", camino: "#7a4b00", instalacion: "#1d4ed8", sugerido: "#16a34a" };
 
-export default function Mapa({ datos, seleccion, linea, yo, satelite, onElegir, centrarEn }: Props) {
+export default function Mapa({ datos, seleccion, linea, yo, satelite, onElegir, centrarEn, detectados }: Props) {
   const div = useRef<HTMLDivElement>(null);
   const mapa = useRef<MLMap | null>(null);
   const listo = useRef(false);
@@ -139,7 +141,8 @@ export default function Mapa({ datos, seleccion, linea, yo, satelite, onElegir, 
             type: "geojson",
             data: { type: "FeatureCollection", features: datos.instalaciones.map((p) => ({ type: "Feature", properties: { k: p.k, c: p.propio ? (p.propio.estado === "pendiente" ? "#e0a100" : p.propio.color) : "" }, geometry: { type: "Point", coordinates: [p.lon, p.lat] } })) }
           },
-          salida: { type: "geojson", data: vacio }
+          salida: { type: "geojson", data: vacio },
+          detectados: { type: "geojson", data: vacio }
         },
         layers: [
           { id: "fondo", type: "background", paint: { "background-color": "#ddd5c3" } },
@@ -154,6 +157,11 @@ export default function Mapa({ datos, seleccion, linea, yo, satelite, onElegir, 
           {
             id: "caminos-borde", type: "line", source: "caminos", minzoom: 10,
             paint: { "line-color": "#7a4b00", "line-opacity": 0.55, "line-width": ["interpolate", ["linear"], ["zoom"], 10, 0.4, 15, 1], "line-gap-width": ["interpolate", ["linear"], ["zoom"], 10, 0.8, 15, 3] }
+          },
+          {
+            // Caminos detectados por satélite que no están en OpenStreetMap (sin confirmar): violeta punteado
+            id: "detectados", type: "line", source: "detectados", minzoom: 9,
+            paint: { "line-color": "#7c3aed", "line-opacity": 0.9, "line-width": ["interpolate", ["linear"], ["zoom"], 9, 1, 15, 2.5], "line-dasharray": [2, 1.5] }
           },
           { id: "rutas-borde", type: "line", source: "rutas", paint: { "line-color": "#5b4a1e", "line-width": ["interpolate", ["linear"], ["zoom"], 7, 2.5, 14, 6] } },
           { id: "rutas", type: "line", source: "rutas", paint: { "line-color": "#f5c542", "line-width": ["interpolate", ["linear"], ["zoom"], 7, 1.2, 14, 4] } },
@@ -292,6 +300,14 @@ export default function Mapa({ datos, seleccion, linea, yo, satelite, onElegir, 
       m.remove(); mapa.current = null; listo.current = false;
     };
   }, [datos]);
+
+  // Caminos detectados (solo administrador)
+  useEffect(() => {
+    const m = mapa.current;
+    if (!m) return;
+    const aplicar = () => (m.getSource("detectados") as maplibregl.GeoJSONSource | undefined)?.setData(detectados ?? vacio);
+    if (listo.current) aplicar(); else m.once("load", aplicar);
+  }, [detectados]);
 
   // Satélite encendido o apagado
   useEffect(() => {

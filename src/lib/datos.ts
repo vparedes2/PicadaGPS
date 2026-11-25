@@ -160,3 +160,17 @@ export function useDatos() {
 
 export const esPozo = (x: Pozo | Instalacion): x is Pozo => "sigla" in x;
 export const nombreDe = (x: Pozo | Instalacion) => (esPozo(x) ? x.sigla : x.nombre);
+
+/**
+ * Caminos detectados por satélite (Microsoft) que faltan en OpenStreetMap. En prueba: solo el administrador los baja.
+ * Usa la copia guardada en el teléfono y, con señal, la renueva.
+ */
+export async function cargarDetectados(): Promise<GeoJSON.FeatureCollection | null> {
+  const c = await abrirCache();
+  const a = "caminos_ms.geojson";
+  try {
+    const r = await pedir(a, await token(), 120000);
+    if (r) { await guardar(c, a, r.texto); return r.datos; }
+  } catch { /* sin acceso: se usa lo guardado */ }
+  return await leerGuardado(c, a);
+}
