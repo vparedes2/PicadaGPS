@@ -221,8 +221,8 @@ export default function Ficha({ x, datos, favorito, onFavorito, onCerrar, onEleg
         <h3 className="text-[13px] uppercase tracking-wide text-tenue font-semibold">Cómo llegar</h3>
         {admin && !urbano && (
           <div className="rounded-lg border-2 border-dashed border-[#16a34a] bg-panel p-3 flex flex-col gap-2">
-            <p className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wide text-[#16a34a]"><FlaskConical className="w-4 h-4" /> Función en prueba</p>
-            {sug === null && <button onClick={calcular} className="flex items-center justify-center gap-2 py-2.5 rounded-lg bg-[#16a34a] text-white font-semibold text-[15px]"><Waypoints className="w-5 h-5" /> Sugerir camino por OpenStreetMap</button>}
+            <p className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wide text-[#16a34a]"><Waypoints className="w-4 h-4" /> Posibles accesos (sugerencia)<span className="ml-auto flex items-center gap-1 normal-case tracking-normal font-normal text-tenue"><FlaskConical className="w-3.5 h-3.5" /> en prueba</span></p>
+            {sug === null && <button onClick={calcular} className="flex items-center justify-center gap-2 py-2.5 rounded-lg bg-[#16a34a] text-white font-semibold text-[15px]"><Waypoints className="w-5 h-5" /> Ver posibles accesos por camino</button>}
             {sug === "calculando" && <p className="text-[14px] text-tenue">Calculando el camino…</p>}
             {sug === "nada" && <p className="text-[14px]">No encontré un camino cargado que una una ruta con este {esPozo(x) ? "pozo" : "lugar"} (o el camino más cercano queda a más de 3 km).</p>}
             {sug && typeof sug === "object" && ref.ruta && ref.ruta.d <= sug.sinCamino && (
@@ -230,9 +230,13 @@ export default function Ficha({ x, datos, favorito, onFavorito, onCerrar, onEleg
             )}
             {sug && typeof sug === "object" && !(ref.ruta && ref.ruta.d <= sug.sinCamino) && (
               <>
+                <div className="rounded-md border border-amber-500 bg-amber-500/10 p-2 flex gap-2 text-[13px] leading-snug">
+                  <TriangleAlert className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+                  <p><b>Esto es una sugerencia, no una indicación.</b> Se calcula con los caminos cargados en OpenStreetMap: no conoce el estado del camino, tranqueras, controles de acceso ni permisos de cada operadora. <b>Antes de salir, confirmá con la operadora o tu supervisor qué ingreso está habilitado.</b></p>
+                </div>
                 {Array.isArray(opciones) && opciones.length > 1 && (
                   <div className="flex flex-col gap-1">
-                    <p className="text-[12px] text-tenue">Elegí por dónde entrar:</p>
+                    <p className="text-[12px] text-tenue">Posibles ingresos (tocá uno para verlo):</p>
                     <div className="flex flex-wrap gap-1.5">
                       {opciones.map((o, i) => (
                         <button key={i} onClick={() => { setElegida(i); onLinea({ lat: o.salida.lat, lon: o.salida.lon }, "sugerido", o.traza); }}
@@ -243,11 +247,11 @@ export default function Ficha({ x, datos, favorito, onFavorito, onCerrar, onEleg
                     </div>
                   </div>
                 )}
-                <p className="text-[15px] leading-snug">Salir de <b>{sug.salida.nombre}</b> y seguir <b>{textoDist(sug.porCamino)}</b> por caminos de yacimiento{sug.sinCamino > 30 ? <>, más <b>{textoDist(sug.sinCamino)}</b> sin camino cargado</> : ""}.</p>
+                <p className="text-[15px] leading-snug">Posible ingreso por <b>{sug.salida.nombre}</b>: unos <b>{textoDist(sug.porCamino)}</b> por caminos de yacimiento{sug.sinCamino > 30 ? <>, más <b>{textoDist(sug.sinCamino)}</b> sin camino cargado</> : ""}. <span className="text-tenue text-[13px]">La distancia no indica el tiempo de viaje.</span></p>
                 {sug.otrasOperadoras.length > 0 && (
                   <div className="rounded-md border border-amber-500 bg-amber-500/10 p-2 flex gap-2 text-[13px] leading-snug">
                     <TriangleAlert className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
-                    <p>El camino pasa por {sug.otrasOperadoras.map((o, i) => <span key={o.area}>{i ? (i === sug.otrasOperadoras.length - 1 ? " y " : ", ") : ""}<b>{titulo(o.area)}</b> ({titulo(o.operador)})</span>)}, de otra operadora. Se recomienda tener autorización de paso antes de ir: puede haber tranqueras o control de acceso.</p>
+                    <p>Este recorrido pasa por áreas de {[...new Set(sug.otrasOperadoras.map((o) => titulo(o.operador)))].map((op, i, l) => <span key={op}>{i ? (i === l.length - 1 ? " y " : ", ") : ""}<b>{op}</b></span>)} ({sug.otrasOperadoras.map((o) => titulo(o.area)).join(", ")}). Necesitás autorización de ingreso de cada una.</p>
                   </div>
                 )}
                 <p className="text-[12px] text-tenue">Salida: {sug.salida.lat.toFixed(5)}, {sug.salida.lon.toFixed(5)}{ref.ruta ? ` · en línea recta la ruta queda a ${textoDist(ref.ruta.d)}` : ""}</p>
@@ -255,7 +259,6 @@ export default function Ficha({ x, datos, favorito, onFavorito, onCerrar, onEleg
                   <button onClick={() => onLinea({ lat: sug.salida.lat, lon: sug.salida.lon }, "sugerido", sug.traza)} className="flex-1 py-2 rounded-lg border border-linea text-[14px] font-semibold">Ver en el mapa</button>
                   <a href={enlaceWaze(sug.salida.lat, sug.salida.lon)} target="_blank" rel="noopener" className="flex-1 py-2 rounded-lg border border-linea text-[14px] font-semibold text-center">Waze a la salida</a>
                 </div>
-                <p className="text-[12px] text-tenue leading-snug">Calculado con los caminos de OpenStreetMap: puede faltar algún tramo o haber tranqueras. Verificá el acceso con la operadora.</p>
               </>
             )}
           </div>
