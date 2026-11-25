@@ -329,6 +329,12 @@ export const TECNICO: Record<string, [string, string][]> = {
       "Correos propios: contacto@picadagps.ar en la presentación, el pie y las preguntas frecuentes; empresas@picadagps.ar en Plan Empresa, el portal de empresas y el simulador"
     ]
   ],
+  "2026-11-25": [
+    [
+      "20:15",
+      "Administración: tilde por usuario para habilitar «posibles accesos por camino» (columna camino_sugerido en picada_cuentas, la devuelve picada_acceso y la cambia picada-admin). Reemplaza la lista fija de correos"
+    ],
+  ],
   "2026-11-24": [
     [
       "22:50",

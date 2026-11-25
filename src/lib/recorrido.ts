@@ -6,10 +6,8 @@
 import { distM } from "./geo";
 import type { Datos } from "./datos";
 
-/** Quiénes ven la prueba del camino sugerido, además del administrador */
-export const PRUEBA_CAMINO = ["gonzalesrigo04@gmail.com"];
-export const veCaminoSugerido = (a: { rol?: string; email?: string }) =>
-  a.rol === "admin" || (!!a.email && PRUEBA_CAMINO.includes(a.email.toLowerCase()));
+/** Ve la prueba del camino sugerido: el administrador y las cuentas que él habilita en el panel */
+export const veCaminoSugerido = (a: { rol?: string; camino_sugerido?: boolean }) => a.rol === "admin" || !!a.camino_sugerido;
 
 /** «Ruta Provincial 7» → «RP 7», «Ruta Nacional 22» → «RN 22» */
 export const rutaCorta = (n: string) => n.replace(/^Ruta (Provincial|Nacional) (\S+).*$/i, (_, t, k) => `R${t[0].toUpperCase()} ${k}`);

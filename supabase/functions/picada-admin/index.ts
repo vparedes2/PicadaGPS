@@ -1,7 +1,7 @@
 // PicadaGPS · administración. Solo responde a cuentas con rol admin en picada_cuentas (la función verifica la sesión).
 // Acciones (POST JSON):
 //   listar                                   → usuarios, pagos, teléfonos y configuración
-//   cuenta     {user_id, cambios}            → activo_hasta, prueba_hasta, bloqueado, nota, plan
+//   cuenta     {user_id, cambios}            → activo_hasta, prueba_hasta, bloqueado, nota, plan, camino_sugerido
 //   sumar_dias {user_id, dias, campo}        → suma días a la prueba o al plan
 //   pago_manual {user_id, meses, ars, usd, nota} → registra un pago por transferencia/efectivo y extiende el plan
 //   confirmar_pago {pago_id}                 → aprueba un pedido hecho por WhatsApp y extiende el plan
@@ -48,6 +48,7 @@ Deno.serve(async (req) => {
       if ("activo_hasta" in c && fechaOk(c.activo_hasta)) permitido.activo_hasta = c.activo_hasta;
       if ("prueba_hasta" in c && fechaOk(c.prueba_hasta) && c.prueba_hasta) permitido.prueba_hasta = c.prueba_hasta;
       if ("bloqueado" in c) permitido.bloqueado = !!c.bloqueado;
+      if ("camino_sugerido" in c) permitido.camino_sugerido = !!c.camino_sugerido;
       if ("nota" in c) permitido.nota = c.nota ? String(c.nota).slice(0, 500) : null;
       if ("plan" in c) permitido.plan = c.plan ? String(c.plan).slice(0, 40) : null;
       if (b.user_id === ud.user.id && permitido.bloqueado) return json({ error: "No podés bloquear tu propia cuenta." }, 400);

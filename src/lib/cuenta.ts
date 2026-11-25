@@ -12,6 +12,7 @@ export type EstadoAcceso = "admin" | "activo" | "prueba" | "vencido" | "bloquead
 export interface Acceso {
   estado: EstadoAcceso; acceso: boolean; hasta: string | null; prueba_hasta?: string; activo_hasta?: string | null;
   plan?: string | null; rol?: string; email?: string; nombre?: string | null; limite_dispositivos?: number;
+  camino_sugerido?: boolean; // ve la prueba de «posibles accesos por camino» (lo habilita el administrador)
   revisado?: string; // cuándo se confirmó con el servidor (para el uso sin señal)
   empresa?: { nombre: string; slug: string; color: string; rol: "admin" | "carga" | "lectura"; estado: string; hasta?: string | null; logo?: string | null; bienvenida?: string | null } | null;
 }

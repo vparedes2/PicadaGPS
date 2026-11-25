@@ -8,7 +8,7 @@ import AdminEmpresas from "./AdminEmpresas";
 
 interface CuentaAdm {
   user_id: string; email: string; nombre: string | null; rol: string; creado: string; prueba_hasta: string;
-  activo_hasta: string | null; plan: string | null; bloqueado: boolean; nota: string | null; ultimo_ingreso: string | null;
+  activo_hasta: string | null; plan: string | null; bloqueado: boolean; nota: string | null; ultimo_ingreso: string | null; camino_sugerido?: boolean;
 }
 interface Pago { id: string; user_id: string; plan: string; meses: number; usd: number; ars: number; cotizacion: number; tipo_dolar: string; medio: string; estado: string; creado: string; mp_payment_id: string | null }
 interface Config { dias_prueba: number; trimestral_usd: number; anual_usd: number; tipo_dolar: string; whatsapp: string; limite_dispositivos: number }
@@ -64,6 +64,7 @@ function FilaUsuario({ c, pagos, disps, onCambio, onPago, onDisps }: { c: Cuenta
           <span className={`block text-[13px] font-semibold ${COLOR[e]}`}>{e}</span>
           <span className="block text-[12px] text-tenue num">{e === "prueba" ? corta(c.prueba_hasta) : corta(c.activo_hasta)}</span>
           {pendiente && <span className="block text-[11px] font-semibold text-pozo">pidió plan</span>}
+          {c.camino_sugerido && <span className="block text-[11px] font-semibold text-[#16a34a]">accesos ✓</span>}
         </span>
       </button>
       {abierta && (
@@ -92,6 +93,12 @@ function FilaUsuario({ c, pagos, disps, onCambio, onPago, onDisps }: { c: Cuenta
                 <Boton onClick={() => hacer("cuenta", { cambios: { activo_hasta: fecha ? new Date(`${fecha}T23:59:00-03:00`).toISOString() : null } })}>Guardar</Boton>
               </label>
             </>
+          )}
+          {c.rol !== "admin" && (
+            <label className="flex items-center gap-2 text-[13px] cursor-pointer">
+              <input type="checkbox" checked={!!c.camino_sugerido} onChange={(x) => hacer("cuenta", { cambios: { camino_sugerido: x.target.checked } })} className="w-4 h-4 accent-[#16a34a]" />
+              <span>Ver <b>posibles accesos por camino</b> (función en prueba)</span>
+            </label>
           )}
           <div className="text-[13px]">
             <span className="text-tenue">Teléfonos ({misDisps.length}):</span>
