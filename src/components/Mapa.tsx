@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import maplibregl, { type GeoJSONSource, type Map as MLMap } from "maplibre-gl";
+import { rutaCorta } from "../lib/recorrido";
 import type { Datos } from "../lib/datos";
 import { TESELA } from "../lib/navegar";
 
@@ -91,10 +92,14 @@ function centroArea(g: GeoJSON.Geometry): [number, number] | null {
 }
 
 /** Etiquetas como HTML: no dependen de fuentes descargadas, así se ven también sin señal */
-function etiqueta(texto: string, clase: "area" | "pozo" | "inst") {
+function etiqueta(texto: string, clase: "area" | "pozo" | "inst" | "ruta") {
   const el = document.createElement("div");
   el.textContent = texto;
   const base = "pointer-events:none;white-space:nowrap;font-family:system-ui,sans-serif;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 2px #fff;";
+  if (clase === "ruta") {
+    el.style.cssText = "pointer-events:none;white-space:nowrap;font-family:system-ui,sans-serif;font-size:11px;font-weight:800;color:#3b2f0b;background:#f5c542;border:1.5px solid #5b4a1e;border-radius:4px;padding:0 4px;line-height:15px";
+    return el;
+  }
   el.style.cssText = base + (clase === "area"
     ? "font-size:11px;font-weight:700;color:#174f35;text-align:center;max-width:140px;white-space:normal;line-height:1.15"
     : clase === "inst" ? "font-size:11.5px;font-weight:600;color:#1d3f9e;transform:translate(10px,0)"
@@ -110,7 +115,7 @@ export default function Mapa({ datos, seleccion, linea, yo, satelite, onElegir, 
   const mapa = useRef<MLMap | null>(null);
   const listo = useRef(false);
   const marcas = useRef<{ sel?: maplibregl.Marker; yo?: maplibregl.Marker }>({});
-  const textos = useRef<{ areas: maplibregl.Marker[]; puntos: maplibregl.Marker[] }>({ areas: [], puntos: [] });
+  const textos = useRef<{ areas: maplibregl.Marker[]; puntos: maplibregl.Marker[]; rutas: maplibregl.Marker[] }>({ areas: [], puntos: [], rutas: [] });
   const elegir = useRef(onElegir);
   elegir.current = onElegir;
 
@@ -197,11 +202,19 @@ export default function Mapa({ datos, seleccion, linea, yo, satelite, onElegir, 
       areas.push({ c, n: titulo(n), tam: (Math.max(...xs) - Math.min(...xs)) * (Math.max(...ys) - Math.min(...ys)) });
     }
     areas.sort((a, b) => b.tam - a.tam);
+    // Número de cada ruta («RP 7», «RN 22») para mostrarlo sobre la línea
+    const rutasNum: { n: string; c: number[][] }[] = [];
+    for (const f of datos.rutasGeo?.features ?? []) {
+      const n = rutaCorta(String((f.properties as any)?.nombre ?? ""));
+      if (!/^R[NP] /.test(n)) continue;
+      const g = f.geometry;
+      for (const c of g.type === "LineString" ? [g.coordinates] : g.type === "MultiLineString" ? g.coordinates : []) rutasNum.push({ n, c });
+    }
     const porClave = datos.porClave;
     // Se dibujan solo las etiquetas que no se pisan con otra ya puesta (cajas en píxeles de pantalla)
     const refrescar = () => {
-      for (const mk of [...textos.current.areas, ...textos.current.puntos]) mk.remove();
-      textos.current = { areas: [], puntos: [] };
+      for (const mk of [...textos.current.areas, ...textos.current.puntos, ...textos.current.rutas]) mk.remove();
+      textos.current = { areas: [], puntos: [], rutas: [] };
       if (!listo.current) return;
       const z = m.getZoom(), W = m.getContainer().clientWidth, H = m.getContainer().clientHeight;
       const cajas: number[][] = [];
@@ -239,7 +252,25 @@ export default function Mapa({ datos, seleccion, linea, yo, satelite, onElegir, 
           if (textos.current.puntos.length >= 70) break;
         }
       }
-      // 2) Nombres de áreas: hasta zoom 14, sin pisarse
+      // 2) Números de ruta: un cartel cada ~260 px de línea, sin pisarse
+      if (z >= 8) {
+        for (const r of rutasNum) {
+          let acum = 130, prev: maplibregl.Point | null = null;
+          for (const c of r.c) {
+            const pt = m.project(c as [number, number]);
+            if (prev) acum += Math.hypot(pt.x - prev.x, pt.y - prev.y);
+            prev = pt;
+            if (acum < 260) continue;
+            const w = r.n.length * 7 + 10;
+            if (!libre(pt.x - w / 2, pt.y - 8, w, 16)) continue;
+            acum = 0;
+            textos.current.rutas.push(new maplibregl.Marker({ element: etiqueta(r.n, "ruta"), anchor: "center" }).setLngLat(c as [number, number]).addTo(m));
+            if (textos.current.rutas.length >= 40) break;
+          }
+          if (textos.current.rutas.length >= 40) break;
+        }
+      }
+      // 3) Nombres de áreas: hasta zoom 14, sin pisarse
       if (z < 14) {
         for (const a of areas) {
           const pt = m.project(a.c);
@@ -256,8 +287,8 @@ export default function Mapa({ datos, seleccion, linea, yo, satelite, onElegir, 
     capturarSatelite = (lat, lon, nombre) => fotoSatelite(m, lat, lon, nombre);
     return () => {
       capturarSatelite = null;
-      for (const mk of [...textos.current.areas, ...textos.current.puntos]) mk.remove();
-      textos.current = { areas: [], puntos: [] };
+      for (const mk of [...textos.current.areas, ...textos.current.puntos, ...textos.current.rutas]) mk.remove();
+      textos.current = { areas: [], puntos: [], rutas: [] };
       m.remove(); mapa.current = null; listo.current = false;
     };
   }, [datos]);

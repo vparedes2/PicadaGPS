@@ -7,10 +7,10 @@ import { copiar, enlaceGoogle, enlaceOtraApp, enlaceWaze, enlaceWazeVer, guardar
 import { compartirUbicacion, enlaceApp, enlaceSatelite } from "../lib/compartir";
 import { capturarSatelite } from "./Mapa";
 import { zonaUrbana } from "../lib/urbano";
-import { sugerirCamino, type Sugerido } from "../lib/recorrido";
+import { sugerirCaminos, rutaCorta, type Sugerido } from "../lib/recorrido";
 
 /** «AGUADA CANEPA» → «Aguada Canepa», «PAN AMERICAN ENERGY SL» → «Pan American Energy SL» */
-const titulo = (t: string) => t.toLowerCase().replace(/(^|[\s(.-])(\p{L})/gu, (_, a, b) => a + b.toUpperCase()).replace(/\b(S\.A\.|S\.r\.l\.|Sl|Sa|Ute|Ypf)\b/gi, (m) => m.toUpperCase());
+const titulo = (t: string) => t.toLowerCase().replace(/(^|[\s(.-])(\p{L})/gu, (_, a, b) => a + b.toUpperCase()).replace(/\b(S\.A\.|S\.r\.l\.|Sl|Sa|Ute|Ypf)\b/gi, (m) => m.toUpperCase()).replace(/ (De|Del|La|Las|Los|Y) /g, (m) => m.toLowerCase());
 
 interface Props {
   x: Pozo | Instalacion;
@@ -99,14 +99,16 @@ export default function Ficha({ x, datos, favorito, onFavorito, onCerrar, onEleg
     return { inst, vecinos, ruta, camino };
   }, [x, datos, lat, lon, urbano]);
 
-  const [sug, setSug] = useState<Sugerido | null | "calculando" | "nada">(null);
-  useEffect(() => { setSug(null); }, [x.k]);
+  const [opciones, setOpciones] = useState<Sugerido[] | null | "calculando" | "nada">(null);
+  const [elegida, setElegida] = useState(0);
+  const sug: Sugerido | null | "calculando" | "nada" = Array.isArray(opciones) ? opciones[elegida] ?? null : opciones;
+  useEffect(() => { setOpciones(null); setElegida(0); }, [x.k]);
   const calcular = () => {
-    setSug("calculando");
+    setOpciones("calculando");
     setTimeout(() => {
-      const r = sugerirCamino(datos, lat, lon);
-      setSug(r ?? "nada");
-      if (r) onLinea({ lat: r.salida.lat, lon: r.salida.lon }, "sugerido", r.traza);
+      const r = sugerirCaminos(datos, lat, lon);
+      setOpciones(r.length ? r : "nada"); setElegida(0);
+      if (r[0]) onLinea({ lat: r[0].salida.lat, lon: r[0].salida.lon }, "sugerido", r[0].traza);
     }, 30);
   };
   const activa = (p: { lat: number; lon: number }) => !!linea && !linea.traza && Math.abs(linea.desde.lat - p.lat) < 1e-7 && Math.abs(linea.desde.lon - p.lon) < 1e-7;
@@ -228,6 +230,19 @@ export default function Ficha({ x, datos, favorito, onFavorito, onCerrar, onEleg
             )}
             {sug && typeof sug === "object" && !(ref.ruta && ref.ruta.d <= sug.sinCamino) && (
               <>
+                {Array.isArray(opciones) && opciones.length > 1 && (
+                  <div className="flex flex-col gap-1">
+                    <p className="text-[12px] text-tenue">Elegí por dónde entrar:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {opciones.map((o, i) => (
+                        <button key={i} onClick={() => { setElegida(i); onLinea({ lat: o.salida.lat, lon: o.salida.lon }, "sugerido", o.traza); }}
+                          className={`px-2.5 py-1.5 rounded-lg border text-[13px] font-semibold ${i === elegida ? "bg-[#16a34a] border-[#16a34a] text-white" : "border-linea"}`}>
+                          {rutaCorta(o.salida.nombre)} · {textoDist(o.porCamino + o.sinCamino)}{o.otrasOperadoras.length ? " ⚠" : ""}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <p className="text-[15px] leading-snug">Salir de <b>{sug.salida.nombre}</b> y seguir <b>{textoDist(sug.porCamino)}</b> por caminos de yacimiento{sug.sinCamino > 30 ? <>, más <b>{textoDist(sug.sinCamino)}</b> sin camino cargado</> : ""}.</p>
                 {sug.otrasOperadoras.length > 0 && (
                   <div className="rounded-md border border-amber-500 bg-amber-500/10 p-2 flex gap-2 text-[13px] leading-snug">

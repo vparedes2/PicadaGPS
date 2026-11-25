@@ -331,6 +331,10 @@ export const TECNICO: Record<string, [string, string][]> = {
   ],
   "2026-11-24": [
     [
+      "22:30",
+      "Camino sugerido (prueba): hasta 3 entradas por rutas distintas para elegir (botones con ruta y km, ⚠ si cruza otra operadora). Mapa: carteles con el número de ruta (RP 7, RN 22) sobre las rutas"
+    ],
+    [
       "20:50",
       "Camino sugerido (prueba): si el recorrido cruza un área de concesión de otra operadora distinta a la del destino, la ficha muestra una advertencia con el área y la operadora y recomienda tener autorización de paso"
     ],

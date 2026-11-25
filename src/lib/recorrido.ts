@@ -11,6 +11,9 @@ export const PRUEBA_CAMINO = ["gonzalesrigo04@gmail.com"];
 export const veCaminoSugerido = (a: { rol?: string; email?: string }) =>
   a.rol === "admin" || (!!a.email && PRUEBA_CAMINO.includes(a.email.toLowerCase()));
 
+/** «Ruta Provincial 7» → «RP 7», «Ruta Nacional 22» → «RN 22» */
+export const rutaCorta = (n: string) => n.replace(/^Ruta (Provincial|Nacional) (\S+).*$/i, (_, t, k) => `R${t[0].toUpperCase()} ${k}`);
+
 export interface Sugerido {
   /** [lon, lat] desde la salida de la ruta hasta el pozo */
   traza: number[][];
@@ -79,7 +82,8 @@ function proyectar(lat: number, lon: number, a: number[], b: number[]) {
   return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
 }
 
-export function sugerirCamino(d: Datos, lat: number, lon: number): Sugerido | null {
+/** Hasta 3 salidas a ruta por camino, de la más corta a la más larga */
+export function sugerirCaminos(d: Datos, lat: number, lon: number): Sugerido[] {
   const enCaja = (c: [number, number, number, number]) => c[2] > lon - CAJA && c[0] < lon + CAJA && c[3] > lat - CAJA && c[1] < lat + CAJA;
   const dist = (a: number[], b: number[]) => distM(a[1], a[0], b[1], b[0]);
 
@@ -115,7 +119,7 @@ export function sugerirCamino(d: Datos, lat: number, lon: number): Sugerido | nu
     for (const e of [nodo(c.coords[0]), nodo(c.coords[c.coords.length - 1])]) { puntas.push(e); lineaDePunta.set(e, nl); }
     nl++;
   }
-  if (!segs.length) return null;
+  if (!segs.length) return [];
 
   // 2. Las puntas que quedan a pocos metros de otro camino se unen a ese camino (OpenStreetMap a veces no comparte
   //    el nodo, y al simplificar las líneas el cruce puede quedar a mitad de un tramo)
@@ -182,7 +186,7 @@ export function sugerirCamino(d: Datos, lat: number, lon: number): Sugerido | nu
     const p = proyectar(lat, lon, pa, pb), w = distM(lat, lon, p[1], p[0]);
     if (w <= MAX_SIN_CAMINO) llegadas.push({ a, b, p, d: w });
   }
-  if (!llegadas.length) return null;
+  if (!llegadas.length) return [];
   llegadas.sort((x, y) => x.d - y.d);
   const tope = Math.min(MAX_SIN_CAMINO, llegadas[0].d + 600);
   const sinCaminoDe = new Map<number, number>();
@@ -203,28 +207,45 @@ export function sugerirCamino(d: Datos, lat: number, lon: number): Sugerido | nu
   const sacar = () => { const top = heap[0], last = heap.pop()!; if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
   // Caminar sin camino cuesta el doble que andar por camino: así prefiere llegar por un camino conectado
   for (const [t, w] of sinCaminoDe) { dd[t] = w * 2; subir([w * 2, t]); }
-  // La salida más barata: llegar a la ruta por camino, o cruzar a pie un hueco corto hasta la ruta (con castigo)
-  let fin = -1, ruta: { p: number[]; n: string } | null = null, mejor = Infinity;
+  // Salidas posibles: la más barata de cada ruta (y de una misma ruta, salidas a más de 8 km entre sí).
+  // Se sigue buscando un rato después de la primera para ofrecer otras opciones.
+  type Cand = { c: number; i: number; r: { p: number[]; n: string } };
+  const cands: Cand[] = [];
+  let mejor = Infinity;
   while (heap.length) {
     const [w, i] = sacar();
     if (w > dd[i]) continue;
-    if (w >= mejor || w > 80000) break;
+    if (w > 80000 || w > Math.max(mejor * 2.2, mejor + 40000)) break;
     const r = sobreRuta(pts[i]);
     if (r) {
       const c = w + (r.d <= CERCA_RUTA ? 0 : r.d * CASTIGO);
-      if (c < mejor) { mejor = c; fin = i; ruta = r; }
+      const igual = cands.find((q) => q.r.n === r.n && dist(q.r.p, r.p) < 8000);
+      if (!igual) { if (cands.length < 30) cands.push({ c, i, r }); }
+      else if (c < igual.c) { igual.c = c; igual.i = i; igual.r = r; }
+      if (c < mejor) mejor = c;
     }
     for (let k = 0; k < ady[i].length; k++) {
       const j = ady[i][k], nw = w + pes[i][k];
       if (nw < dd[j]) { dd[j] = nw; padre[j] = i; subir([nw, j]); }
     }
   }
-  if (fin < 0 || !ruta) return null;
+  cands.sort((a, b) => a.c - b.c);
+  // Primero la mejor salida de cada ruta distinta; si quedan lugares, otras salidas de la misma ruta
+  const elegidas: Cand[] = [];
+  for (const q of cands) if (elegidas.length < 3 && !elegidas.some((e) => e.r.n === q.r.n)) elegidas.push(q);
+  for (const q of cands) if (elegidas.length < 3 && !elegidas.includes(q)) elegidas.push(q);
+  elegidas.sort((a, b) => a.c - b.c);
+  return elegidas.map(({ i: fin, r: ruta }) => {
+    const traza: number[][] = [ruta.p];
+    let inicio = fin;
+    for (let i = fin; i >= 0; i = padre[i]) { traza.push(pts[i]); inicio = i; }
+    traza.push([lon, lat]);
+    const sinCamino = sinCaminoDe.get(inicio) ?? 0;
+    return { traza, porCamino: dd[fin] - sinCamino * 2, sinCamino, salida: { lat: ruta.p[1], lon: ruta.p[0], nombre: ruta.n }, otrasOperadoras: areasAjenas(d.areas, traza) };
+  });
+}
 
-  const traza: number[][] = [ruta.p];
-  let inicio = fin;
-  for (let i = fin; i >= 0; i = padre[i]) { traza.push(pts[i]); inicio = i; }
-  traza.push([lon, lat]);
-  const sinCamino = sinCaminoDe.get(inicio) ?? 0;
-  return { traza, porCamino: dd[fin] - sinCamino * 2, sinCamino, salida: { lat: ruta.p[1], lon: ruta.p[0], nombre: ruta.n }, otrasOperadoras: areasAjenas(d.areas, traza) };
+/** La salida más corta por camino (o null) */
+export function sugerirCamino(d: Datos, lat: number, lon: number): Sugerido | null {
+  return sugerirCaminos(d, lat, lon)[0] ?? null;
 }
