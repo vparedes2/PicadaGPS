@@ -331,6 +331,10 @@ export const TECNICO: Record<string, [string, string][]> = {
   ],
   "2026-11-24": [
     [
+      "22:50",
+      "Camino sugerido (prueba): botón «Centrar recorrido en el mapa» y nuevo «Google Maps a la salida» junto a Waze, con aclaración de que llevan hasta la salida de la ruta"
+    ],
+    [
       "22:45",
       "Camino sugerido (prueba): textos que aclaran que es una sugerencia y no una indicación; aviso visible para confirmar el ingreso con la operadora o el supervisor antes de salir; advertencia de otras operadoras pide autorización de ingreso de cada una"
     ],

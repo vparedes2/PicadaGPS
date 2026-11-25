@@ -255,10 +255,13 @@ export default function Ficha({ x, datos, favorito, onFavorito, onCerrar, onEleg
                   </div>
                 )}
                 <p className="text-[12px] text-tenue">Salida: {sug.salida.lat.toFixed(5)}, {sug.salida.lon.toFixed(5)}{ref.ruta ? ` · en línea recta la ruta queda a ${textoDist(ref.ruta.d)}` : ""}</p>
+                <button onClick={() => onLinea({ lat: sug.salida.lat, lon: sug.salida.lon }, "sugerido", sug.traza)} className="flex items-center justify-center gap-2 py-2 rounded-lg border border-[#16a34a] text-[#16a34a] text-[14px] font-semibold"><MapPin className="w-4 h-4" /> Centrar recorrido en el mapa</button>
+                <p className="text-[12px] text-tenue -mb-1">Ir hasta la salida de la ruta con:</p>
                 <div className="flex gap-2">
-                  <button onClick={() => onLinea({ lat: sug.salida.lat, lon: sug.salida.lon }, "sugerido", sug.traza)} className="flex-1 py-2 rounded-lg border border-linea text-[14px] font-semibold">Ver en el mapa</button>
-                  <a href={enlaceWaze(sug.salida.lat, sug.salida.lon)} target="_blank" rel="noopener" className="flex-1 py-2 rounded-lg border border-linea text-[14px] font-semibold text-center">Waze a la salida</a>
+                  <a href={enlaceWaze(sug.salida.lat, sug.salida.lon)} target="_blank" rel="noopener" className="flex-1 py-2 rounded-lg border border-linea text-[14px] font-semibold text-center">Waze</a>
+                  <a href={enlaceGoogle(sug.salida.lat, sug.salida.lon)} target="_blank" rel="noopener" className="flex-1 py-2 rounded-lg border border-linea text-[14px] font-semibold text-center">Google Maps</a>
                 </div>
+                <p className="text-[12px] text-tenue leading-snug">Desde la salida seguí el recorrido verde en el mapa de PicadaGPS (funciona sin señal).</p>
               </>
             )}
           </div>
